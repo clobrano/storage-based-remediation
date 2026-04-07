@@ -64,18 +64,18 @@ const (
 	MaxIOTimeout = 5 * time.Minute
 	// DefaultRebootMethod is the default reboot method for self-fencing
 	DefaultRebootMethod = "systemctl-reboot"
-	// DefaultSBDTimeoutSeconds is the default SBD timeout in seconds
-	DefaultSBDTimeoutSeconds = 30
-	// MinSBDTimeoutSeconds is the minimum allowed SBD timeout in seconds
-	MinSBDTimeoutSeconds = 10
-	// MaxSBDTimeoutSeconds is the maximum allowed SBD timeout in seconds
-	MaxSBDTimeoutSeconds = 300
-	// DefaultSBDUpdateInterval is the default interval for SBD device updates
-	DefaultSBDUpdateInterval = 5 * time.Second
-	// MinSBDUpdateInterval is the minimum allowed SBD update interval
-	MinSBDUpdateInterval = 1 * time.Second
-	// MaxSBDUpdateInterval is the maximum allowed SBD update interval
-	MaxSBDUpdateInterval = 60 * time.Second
+	// DefaultSBRTimeoutSeconds is the default SBR timeout in seconds
+	DefaultSBRTimeoutSeconds = 30
+	// MinSBRTimeoutSeconds is the minimum allowed SBR timeout in seconds
+	MinSBRTimeoutSeconds = 10
+	// MaxSBRTimeoutSeconds is the maximum allowed SBR timeout in seconds
+	MaxSBRTimeoutSeconds = 300
+	// DefaultSBRUpdateInterval is the default interval for SBR device updates
+	DefaultSBRUpdateInterval = 5 * time.Second
+	// MinSBRUpdateInterval is the minimum allowed SBR update interval
+	MinSBRUpdateInterval = 1 * time.Second
+	// MaxSBRUpdateInterval is the maximum allowed SBR update interval
+	MaxSBRUpdateInterval = 60 * time.Second
 	// DefaultPeerCheckInterval is the default interval for peer check operations
 	DefaultPeerCheckInterval = 5 * time.Second
 	// MinPeerCheckInterval is the minimum allowed peer check interval
@@ -342,7 +342,7 @@ func (s *StorageBasedRemediationConfigSpec) GetSBRTimeoutSeconds() int32 {
 	if s.SBRTimeoutSeconds != nil {
 		return *s.SBRTimeoutSeconds
 	}
-	return DefaultSBDTimeoutSeconds
+	return DefaultSBRTimeoutSeconds
 }
 
 // GetSBRUpdateInterval returns the SBR update interval with default fallback
@@ -350,7 +350,7 @@ func (s *StorageBasedRemediationConfigSpec) GetSBRUpdateInterval() time.Duration
 	if s.SBRUpdateInterval != nil {
 		return s.SBRUpdateInterval.Duration
 	}
-	return DefaultSBDUpdateInterval
+	return DefaultSBRUpdateInterval
 }
 
 // GetPeerCheckInterval returns the peer check interval with default fallback
@@ -560,12 +560,12 @@ func (s *StorageBasedRemediationConfigSpec) ValidateRebootMethod() error {
 func (s *StorageBasedRemediationConfigSpec) ValidateSBRTimeoutSeconds() error {
 	timeout := s.GetSBRTimeoutSeconds()
 
-	if timeout < MinSBDTimeoutSeconds {
-		return fmt.Errorf("SBR timeout %d seconds is less than minimum %d seconds", timeout, MinSBDTimeoutSeconds)
+	if timeout < MinSBRTimeoutSeconds {
+		return fmt.Errorf("SBR timeout %d seconds is less than minimum %d seconds", timeout, MinSBRTimeoutSeconds)
 	}
 
-	if timeout > MaxSBDTimeoutSeconds {
-		return fmt.Errorf("SBR timeout %d seconds is greater than maximum %d seconds", timeout, MaxSBDTimeoutSeconds)
+	if timeout > MaxSBRTimeoutSeconds {
+		return fmt.Errorf("SBR timeout %d seconds is greater than maximum %d seconds", timeout, MaxSBRTimeoutSeconds)
 	}
 
 	return nil
@@ -575,12 +575,12 @@ func (s *StorageBasedRemediationConfigSpec) ValidateSBRTimeoutSeconds() error {
 func (s *StorageBasedRemediationConfigSpec) ValidateSBRUpdateInterval() error {
 	interval := s.GetSBRUpdateInterval()
 
-	if interval < MinSBDUpdateInterval {
-		return fmt.Errorf("SBR update interval %v is less than minimum %v", interval, MinSBDUpdateInterval)
+	if interval < MinSBRUpdateInterval {
+		return fmt.Errorf("SBR update interval %v is less than minimum %v", interval, MinSBRUpdateInterval)
 	}
 
-	if interval > MaxSBDUpdateInterval {
-		return fmt.Errorf("SBR update interval %v is greater than maximum %v", interval, MaxSBDUpdateInterval)
+	if interval > MaxSBRUpdateInterval {
+		return fmt.Errorf("SBR update interval %v is greater than maximum %v", interval, MaxSBRUpdateInterval)
 	}
 
 	return nil

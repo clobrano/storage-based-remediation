@@ -20,36 +20,36 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// SBDRemediationConditionType represents the type of condition for StorageBasedRemediation
-type SBDRemediationConditionType string
+// SBRRemediationConditionType represents the type of condition for StorageBasedRemediation
+type SBRRemediationConditionType string
 
 const (
-	// SBDRemediationConditionLeadershipAcquired indicates whether the operator has acquired leadership for fencing
-	SBDRemediationConditionLeadershipAcquired SBDRemediationConditionType = "LeadershipAcquired"
-	// SBDRemediationConditionFencingInProgress indicates whether fencing is currently in progress
-	SBDRemediationConditionFencingInProgress SBDRemediationConditionType = "FencingInProgress"
-	// SBDRemediationConditionFencingSucceeded indicates whether fencing completed successfully
-	SBDRemediationConditionFencingSucceeded SBDRemediationConditionType = "FencingSucceeded"
-	// SBDRemediationConditionReady indicates the overall readiness of the remediation
-	SBDRemediationConditionReady SBDRemediationConditionType = "Ready"
+	// SBRRemediationConditionLeadershipAcquired indicates whether the operator has acquired leadership for fencing
+	SBRRemediationConditionLeadershipAcquired SBRRemediationConditionType = "LeadershipAcquired"
+	// SBRRemediationConditionFencingInProgress indicates whether fencing is currently in progress
+	SBRRemediationConditionFencingInProgress SBRRemediationConditionType = "FencingInProgress"
+	// SBRRemediationConditionFencingSucceeded indicates whether fencing completed successfully
+	SBRRemediationConditionFencingSucceeded SBRRemediationConditionType = "FencingSucceeded"
+	// SBRRemediationConditionReady indicates the overall readiness of the remediation
+	SBRRemediationConditionReady SBRRemediationConditionType = "Ready"
 )
 
 // Node condition type set by SBR when it detects a node as unhealthy (e.g. heartbeat timeout).
 // NHC or other remediators watch this condition and create StorageBasedRemediation when True.
 const NodeConditionSBRStorageUnhealthy = "SBRStorageUnhealthy"
 
-// SBDRemediationReason represents the reason for the current remediation state
-type SBDRemediationReason string
+// SBRRemediationReason represents the reason for the current remediation state
+type SBRRemediationReason string
 
 const (
-	// SBDRemediationReasonHeartbeatTimeout indicates the node stopped sending heartbeats
-	SBDRemediationReasonHeartbeatTimeout SBDRemediationReason = "HeartbeatTimeout"
-	// SBDRemediationReasonNodeUnresponsive indicates the node is unresponsive
-	SBDRemediationReasonNodeUnresponsive SBDRemediationReason = "NodeUnresponsive"
-	// SBDRemediationReasonManualFencing indicates manual fencing was requested
-	SBDRemediationReasonManualFencing SBDRemediationReason = "ManualFencing"
-	// SBDRemediationReasonNone indicates no fencing is required
-	SBDRemediationReasonNone SBDRemediationReason = "None"
+	// SBRRemediationReasonHeartbeatTimeout indicates the node stopped sending heartbeats
+	SBRRemediationReasonHeartbeatTimeout SBRRemediationReason = "HeartbeatTimeout"
+	// SBRRemediationReasonNodeUnresponsive indicates the node is unresponsive
+	SBRRemediationReasonNodeUnresponsive SBRRemediationReason = "NodeUnresponsive"
+	// SBRRemediationReasonManualFencing indicates manual fencing was requested
+	SBRRemediationReasonManualFencing SBRRemediationReason = "ManualFencing"
+	// SBRRemediationReasonNone indicates no fencing is required
+	SBRRemediationReasonNone SBRRemediationReason = "None"
 )
 
 // StorageBasedRemediationSpec defines the desired state of StorageBasedRemediation.
@@ -57,7 +57,7 @@ type StorageBasedRemediationSpec struct {
 	// Reason specifies why this node needs to be fenced
 	// +kubebuilder:validation:Enum=HeartbeatTimeout;NodeUnresponsive;ManualFencing
 	// +kubebuilder:default=NodeUnresponsive
-	Reason SBDRemediationReason `json:"reason,omitempty"`
+	Reason SBRRemediationReason `json:"reason,omitempty"`
 
 	// TimeoutSeconds specifies how long to wait before considering the fencing failed
 	// +kubebuilder:validation:Minimum=30
@@ -119,7 +119,7 @@ func init() {
 }
 
 // GetCondition returns the condition with the given type if it exists
-func (r *StorageBasedRemediation) GetCondition(conditionType SBDRemediationConditionType) *metav1.Condition {
+func (r *StorageBasedRemediation) GetCondition(conditionType SBRRemediationConditionType) *metav1.Condition {
 	for i := range r.Status.Conditions {
 		if r.Status.Conditions[i].Type == string(conditionType) {
 			return &r.Status.Conditions[i]
@@ -130,7 +130,7 @@ func (r *StorageBasedRemediation) GetCondition(conditionType SBDRemediationCondi
 
 // SetCondition sets the given condition on the StorageBasedRemediation
 func (r *StorageBasedRemediation) SetCondition(
-	conditionType SBDRemediationConditionType,
+	conditionType SBRRemediationConditionType,
 	status metav1.ConditionStatus,
 	reason, message string,
 ) {
@@ -167,39 +167,39 @@ func (r *StorageBasedRemediation) SetCondition(
 }
 
 // IsConditionTrue returns true if the condition is set to True
-func (r *StorageBasedRemediation) IsConditionTrue(conditionType SBDRemediationConditionType) bool {
+func (r *StorageBasedRemediation) IsConditionTrue(conditionType SBRRemediationConditionType) bool {
 	condition := r.GetCondition(conditionType)
 	return condition != nil && condition.Status == metav1.ConditionTrue
 }
 
 // IsConditionFalse returns true if the condition is set to False
-func (r *StorageBasedRemediation) IsConditionFalse(conditionType SBDRemediationConditionType) bool {
+func (r *StorageBasedRemediation) IsConditionFalse(conditionType SBRRemediationConditionType) bool {
 	condition := r.GetCondition(conditionType)
 	return condition != nil && condition.Status == metav1.ConditionFalse
 }
 
 // IsConditionUnknown returns true if the condition is set to Unknown or doesn't exist
-func (r *StorageBasedRemediation) IsConditionUnknown(conditionType SBDRemediationConditionType) bool {
+func (r *StorageBasedRemediation) IsConditionUnknown(conditionType SBRRemediationConditionType) bool {
 	condition := r.GetCondition(conditionType)
 	return condition == nil || condition.Status == metav1.ConditionUnknown
 }
 
 // IsFencingSucceeded returns true if fencing has completed successfully
 func (r *StorageBasedRemediation) IsFencingSucceeded() bool {
-	return r.IsConditionTrue(SBDRemediationConditionFencingSucceeded)
+	return r.IsConditionTrue(SBRRemediationConditionFencingSucceeded)
 }
 
 // IsFencingInProgress returns true if fencing is currently in progress
 func (r *StorageBasedRemediation) IsFencingInProgress() bool {
-	return r.IsConditionTrue(SBDRemediationConditionFencingInProgress)
+	return r.IsConditionTrue(SBRRemediationConditionFencingInProgress)
 }
 
 // IsReady returns true if the remediation is ready (either succeeded or failed)
 func (r *StorageBasedRemediation) IsReady() bool {
-	return r.IsConditionTrue(SBDRemediationConditionReady)
+	return r.IsConditionTrue(SBRRemediationConditionReady)
 }
 
 // HasLeadership returns true if leadership has been acquired
 func (r *StorageBasedRemediation) HasLeadership() bool {
-	return r.IsConditionTrue(SBDRemediationConditionLeadershipAcquired)
+	return r.IsConditionTrue(SBRRemediationConditionLeadershipAcquired)
 }

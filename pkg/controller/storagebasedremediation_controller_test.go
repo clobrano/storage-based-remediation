@@ -109,7 +109,7 @@ var _ = Describe("StorageBasedRemediation Controller", func() {
 					Namespace: "default",
 				},
 				Spec: medik8sv1alpha1.StorageBasedRemediationSpec{
-					Reason: medik8sv1alpha1.SBDRemediationReasonHeartbeatTimeout,
+					Reason: medik8sv1alpha1.SBRRemediationReasonHeartbeatTimeout,
 				},
 			}
 			Expect(k8sClient.Create(ctx, resource)).To(Succeed())
@@ -137,7 +137,7 @@ var _ = Describe("StorageBasedRemediation Controller", func() {
 					Namespace: "default",
 				},
 				Spec: medik8sv1alpha1.StorageBasedRemediationSpec{
-					Reason: medik8sv1alpha1.SBDRemediationReasonManualFencing,
+					Reason: medik8sv1alpha1.SBRRemediationReasonManualFencing,
 				},
 			}
 			Expect(k8sClient.Create(ctx, resource)).To(Succeed())
@@ -181,7 +181,7 @@ var _ = Describe("StorageBasedRemediation Controller", func() {
 					Namespace: "default",
 				},
 				Spec: medik8sv1alpha1.StorageBasedRemediationSpec{
-					Reason:         medik8sv1alpha1.SBDRemediationReasonManualFencing,
+					Reason:         medik8sv1alpha1.SBRRemediationReasonManualFencing,
 					TimeoutSeconds: customTimeout,
 				},
 			}
@@ -208,7 +208,7 @@ var _ = Describe("StorageBasedRemediation Controller", func() {
 						Namespace: "default",
 					},
 					Spec: medik8sv1alpha1.StorageBasedRemediationSpec{
-						Reason:         medik8sv1alpha1.SBDRemediationReasonNodeUnresponsive,
+						Reason:         medik8sv1alpha1.SBRRemediationReasonNodeUnresponsive,
 						TimeoutSeconds: 300,
 					},
 				}
@@ -241,7 +241,7 @@ var _ = Describe("StorageBasedRemediation Controller", func() {
 				finalResource := &medik8sv1alpha1.StorageBasedRemediation{}
 				Expect(k8sClient.Get(ctx, types.NamespacedName{Name: testNodeName, Namespace: "default"}, finalResource)).To(Succeed())
 				Expect(finalResource.Name).To(Equal(testNodeName))
-				Expect(finalResource.Spec.Reason).To(Equal(medik8sv1alpha1.SBDRemediationReasonNodeUnresponsive))
+				Expect(finalResource.Spec.Reason).To(Equal(medik8sv1alpha1.SBRRemediationReasonNodeUnresponsive))
 			})
 		})
 
@@ -255,7 +255,7 @@ var _ = Describe("StorageBasedRemediation Controller", func() {
 						Namespace: "default",
 					},
 					Spec: medik8sv1alpha1.StorageBasedRemediationSpec{
-						Reason:         medik8sv1alpha1.SBDRemediationReasonNodeUnresponsive,
+						Reason:         medik8sv1alpha1.SBRRemediationReasonNodeUnresponsive,
 						TimeoutSeconds: 300,
 					},
 				}
@@ -283,7 +283,7 @@ var _ = Describe("StorageBasedRemediation Controller", func() {
 				finalResource := &medik8sv1alpha1.StorageBasedRemediation{}
 				Expect(k8sClient.Get(ctx, types.NamespacedName{Name: testNodeName, Namespace: "default"}, finalResource)).To(Succeed())
 				Expect(finalResource.Name).To(Equal(testNodeName))
-				Expect(finalResource.Spec.Reason).To(Equal(medik8sv1alpha1.SBDRemediationReasonNodeUnresponsive))
+				Expect(finalResource.Spec.Reason).To(Equal(medik8sv1alpha1.SBRRemediationReasonNodeUnresponsive))
 			})
 		})
 	})
@@ -319,13 +319,13 @@ var _ = Describe("StorageBasedRemediation Controller", func() {
 					sbrFound := &medik8sv1alpha1.StorageBasedRemediation{}
 					Expect(reconciler.Client.Get(ctx, client.ObjectKeyFromObject(sbr), sbrFound)).To(Succeed())
 
-					fencingInProgressCondition := sbrFound.GetCondition(medik8sv1alpha1.SBDRemediationConditionFencingInProgress)
+					fencingInProgressCondition := sbrFound.GetCondition(medik8sv1alpha1.SBRRemediationConditionFencingInProgress)
 					verifyCondition(fencingInProgressCondition, metav1.ConditionFalse, ReasonCompleted, "Fencing completed")
 
-					fencingSucceededCondition := sbrFound.GetCondition(medik8sv1alpha1.SBDRemediationConditionFencingSucceeded)
+					fencingSucceededCondition := sbrFound.GetCondition(medik8sv1alpha1.SBRRemediationConditionFencingSucceeded)
 					verifyCondition(fencingSucceededCondition, metav1.ConditionTrue, ReasonCompleted, "Node worker-2 fenced successfully")
 
-					remediationReadyCondition := sbrFound.GetCondition(medik8sv1alpha1.SBDRemediationConditionReady)
+					remediationReadyCondition := sbrFound.GetCondition(medik8sv1alpha1.SBRRemediationConditionReady)
 					verifyCondition(remediationReadyCondition, metav1.ConditionTrue, ReasonCompleted, "Remediation completed successfully")
 
 				})
@@ -355,10 +355,10 @@ var _ = Describe("StorageBasedRemediation Controller", func() {
 					sbrFound := &medik8sv1alpha1.StorageBasedRemediation{}
 					Expect(reconciler.Client.Get(ctx, client.ObjectKeyFromObject(sbr), sbrFound)).To(Succeed())
 
-					fip := sbrFound.GetCondition(medik8sv1alpha1.SBDRemediationConditionFencingInProgress)
+					fip := sbrFound.GetCondition(medik8sv1alpha1.SBRRemediationConditionFencingInProgress)
 					verifyCondition(fip, metav1.ConditionFalse, ReasonFailed, fenceErr.Error())
 
-					rdy := sbrFound.GetCondition(medik8sv1alpha1.SBDRemediationConditionReady)
+					rdy := sbrFound.GetCondition(medik8sv1alpha1.SBRRemediationConditionReady)
 					verifyCondition(rdy, metav1.ConditionFalse, ReasonFailed, fenceErr.Error())
 				})
 			})
@@ -373,8 +373,8 @@ var _ = Describe("StorageBasedRemediation Controller", func() {
 
 					sbrFound := &medik8sv1alpha1.StorageBasedRemediation{}
 					Expect(reconciler.Client.Get(ctx, client.ObjectKeyFromObject(sbr), sbrFound)).To(Succeed())
-					Expect(sbrFound.GetCondition(medik8sv1alpha1.SBDRemediationConditionFencingInProgress)).To(BeNil())
-					Expect(sbrFound.GetCondition(medik8sv1alpha1.SBDRemediationConditionReady)).To(BeNil())
+					Expect(sbrFound.GetCondition(medik8sv1alpha1.SBRRemediationConditionFencingInProgress)).To(BeNil())
+					Expect(sbrFound.GetCondition(medik8sv1alpha1.SBRRemediationConditionReady)).To(BeNil())
 				})
 			})
 		})

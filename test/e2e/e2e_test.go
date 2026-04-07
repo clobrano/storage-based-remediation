@@ -704,7 +704,7 @@ func testStorageAccessInterruption(cluster ClusterInfo) {
 			Namespace: testNamespace.Name,
 		},
 		Spec: medik8sv1alpha1.StorageBasedRemediationSpec{
-			Reason:         medik8sv1alpha1.SBDRemediationReasonHeartbeatTimeout,
+			Reason:         medik8sv1alpha1.SBRRemediationReasonHeartbeatTimeout,
 			TimeoutSeconds: 300,
 		},
 	}
@@ -812,7 +812,7 @@ func testKubeletCommunicationFailure(cluster ClusterInfo) {
 			Namespace: testNamespace.Name,
 		},
 		Spec: medik8sv1alpha1.StorageBasedRemediationSpec{
-			Reason:         medik8sv1alpha1.SBDRemediationReasonHeartbeatTimeout,
+			Reason:         medik8sv1alpha1.SBRRemediationReasonHeartbeatTimeout,
 			TimeoutSeconds: 300, // 5 minutes timeout for fencing
 		},
 	}
@@ -872,7 +872,7 @@ func testFakeRemediation() {
 			Namespace: testNamespace.Name,
 		},
 		Spec: medik8sv1alpha1.StorageBasedRemediationSpec{
-			Reason:         medik8sv1alpha1.SBDRemediationReasonHeartbeatTimeout,
+			Reason:         medik8sv1alpha1.SBRRemediationReasonHeartbeatTimeout,
 			TimeoutSeconds: 300, // 5 minutes timeout for fencing
 		},
 	}
@@ -915,7 +915,7 @@ func testNodeRemediation(cluster ClusterInfo) {
 			Namespace: testNamespace.Name,
 		},
 		Spec: medik8sv1alpha1.StorageBasedRemediationSpec{
-			Reason:         medik8sv1alpha1.SBDRemediationReasonHeartbeatTimeout,
+			Reason:         medik8sv1alpha1.SBRRemediationReasonHeartbeatTimeout,
 			TimeoutSeconds: 300, // 5 minutes timeout for fencing
 		},
 	}
@@ -976,7 +976,7 @@ func testNodeRemediation(cluster ClusterInfo) {
 		}
 		for i := range cur.Status.Conditions {
 			c := cur.Status.Conditions[i]
-			if c.Type == string(medik8sv1alpha1.SBDRemediationConditionFencingSucceeded) &&
+			if c.Type == string(medik8sv1alpha1.SBRRemediationConditionFencingSucceeded) &&
 				c.Status == metav1.ConditionTrue {
 				return true
 			}
@@ -1011,7 +1011,7 @@ func testNodeRemediation(cluster ClusterInfo) {
 		}
 		for i := range cur.Status.Conditions {
 			c := cur.Status.Conditions[i]
-			if c.Type == string(medik8sv1alpha1.SBDRemediationConditionReady) &&
+			if c.Type == string(medik8sv1alpha1.SBRRemediationConditionReady) &&
 				c.Status == metav1.ConditionTrue {
 				return true
 			}

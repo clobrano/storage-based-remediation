@@ -86,7 +86,7 @@ var (
 		"Name of the cluster for node mapping")
 	nodeID = flag.Uint(agent.FlagNodeID, agent.DefaultNodeID,
 		"Unique numeric ID for this node (1-255) - deprecated, use hash-based mapping")
-	sbdTimeoutSeconds = flag.Uint(agent.FlagSBDTimeoutSeconds, agent.DefaultSBDTimeoutSeconds,
+	sbdTimeoutSeconds = flag.Uint(agent.FlagSBDTimeoutSeconds, agent.DefaultSBRTimeoutSeconds,
 		"SBD timeout in seconds (determines heartbeat interval)")
 	sbdUpdateInterval = flag.Duration(agent.FlagSBDUpdateInterval, 5*time.Second,
 		"Interval for updating SBD device with node status")
@@ -1413,7 +1413,7 @@ func (s *SBDAgent) peerMonitorLoop() {
 				// Condition is Unknown: after grace period set True again if still unhealthy
 				if currentStatus == corev1.ConditionUnknown {
 					if now.Sub(lastTransition) > SBDAgentRemediationGracePeriod {
-						if err := s.setNodeConditionSBRStorageUnhealthyStatus(peerNodeName, corev1.ConditionTrue, string(v1alpha1.SBDRemediationReasonHeartbeatTimeout), "SBD peer heartbeat timeout"); err != nil {
+						if err := s.setNodeConditionSBRStorageUnhealthyStatus(peerNodeName, corev1.ConditionTrue, string(v1alpha1.SBRRemediationReasonHeartbeatTimeout), "SBD peer heartbeat timeout"); err != nil {
 							logger.Error(err, "Failed to set SBRStorageUnhealthy condition after grace period", "peerNodeID", peer.NodeID, "peerNodeName", peerNodeName)
 						} else {
 							logger.Info("Set SBRStorageUnhealthy condition after grace period (node still unhealthy)", "peerNodeID", peer.NodeID, "peerNodeName", peerNodeName)
@@ -1424,7 +1424,7 @@ func (s *SBDAgent) peerMonitorLoop() {
 
 				// Condition False or absent: set True so NHC can create remediation
 				if currentStatus == corev1.ConditionFalse || !hasCond {
-					if err := s.setNodeConditionSBRStorageUnhealthy(peerNodeName, true, string(v1alpha1.SBDRemediationReasonHeartbeatTimeout), "SBD peer heartbeat timeout"); err != nil {
+					if err := s.setNodeConditionSBRStorageUnhealthy(peerNodeName, true, string(v1alpha1.SBRRemediationReasonHeartbeatTimeout), "SBD peer heartbeat timeout"); err != nil {
 						logger.Error(err, "Failed to set SBRStorageUnhealthy condition for unhealthy peer", "peerNodeID", peer.NodeID, "peerNodeName", peerNodeName)
 					} else {
 						logger.Info("Set SBRStorageUnhealthy condition for unhealthy peer", "peerNodeID", peer.NodeID, "peerNodeName", peerNodeName)

@@ -623,7 +623,7 @@ func TestStorageBasedRemediationConfigSpec_GetSBRTimeoutSeconds(t *testing.T) {
 			spec: StorageBasedRemediationConfigSpec{
 				SBRTimeoutSeconds: nil,
 			},
-			expected: DefaultSBDTimeoutSeconds,
+			expected: DefaultSBRTimeoutSeconds,
 		},
 		{
 			name: "explicit timeout is returned",
@@ -662,7 +662,7 @@ func TestStorageBasedRemediationConfigSpec_GetSBRUpdateInterval(t *testing.T) {
 			spec: StorageBasedRemediationConfigSpec{
 				SBRUpdateInterval: nil,
 			},
-			expected: DefaultSBDUpdateInterval,
+			expected: DefaultSBRUpdateInterval,
 		},
 		{
 			name: "explicit interval is returned",

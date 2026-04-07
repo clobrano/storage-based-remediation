@@ -1551,7 +1551,7 @@ var _ = Describe("Fence flow with real SBD agent", func() {
 			sbr := &medik8sv1alpha1.StorageBasedRemediation{
 				ObjectMeta: metav1.ObjectMeta{Name: fenceFlowTargetNode, Namespace: "default"},
 				Spec: medik8sv1alpha1.StorageBasedRemediationSpec{
-					Reason:         medik8sv1alpha1.SBDRemediationReasonHeartbeatTimeout,
+					Reason:         medik8sv1alpha1.SBRRemediationReasonHeartbeatTimeout,
 					TimeoutSeconds: 300,
 				},
 			}
@@ -1746,7 +1746,7 @@ var _ = Describe("Fence flow with real SBD agent", func() {
 				sbr := &medik8sv1alpha1.StorageBasedRemediation{
 					ObjectMeta: metav1.ObjectMeta{Name: "worker-1", Namespace: controllerNamespace},
 					Spec: medik8sv1alpha1.StorageBasedRemediationSpec{
-						Reason:         medik8sv1alpha1.SBDRemediationReasonHeartbeatTimeout,
+						Reason:         medik8sv1alpha1.SBRRemediationReasonHeartbeatTimeout,
 						TimeoutSeconds: 300,
 					},
 				}

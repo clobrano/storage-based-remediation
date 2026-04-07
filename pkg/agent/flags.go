@@ -97,11 +97,11 @@ const (
 	// DefaultNodeID is the default node ID (0 means use hash-based mapping)
 	DefaultNodeID = 0
 
-	// DefaultSBDTimeoutSeconds is the default SBD timeout in seconds
-	DefaultSBDTimeoutSeconds = 30
+	// DefaultSBRTimeoutSeconds is the default SBR timeout in seconds
+	DefaultSBRTimeoutSeconds = 30
 
-	// DefaultSBDUpdateInterval is the default SBD update interval
-	DefaultSBDUpdateInterval = "5s"
+	// DefaultSBRUpdateInterval is the default SBR update interval
+	DefaultSBRUpdateInterval = "5s"
 
 	// DefaultPeerCheckInterval is the default peer check interval
 	DefaultPeerCheckInterval = "5s"

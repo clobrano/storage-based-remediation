@@ -264,7 +264,7 @@ func (r *SBDRemediationReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		"ready", sbdRemediation.IsReady(),
 		"fencingSucceeded", sbdRemediation.IsFencingSucceeded(),
 		"fencingInProgress", sbdRemediation.IsFencingInProgress(),
-		"condition", sbdRemediation.GetCondition(medik8sv1alpha1.SBDRemediationConditionFencingSucceeded),
+		"condition", sbdRemediation.GetCondition(medik8sv1alpha1.SBRRemediationConditionFencingSucceeded),
 	)
 
 	// Check if we already completed this remediation
@@ -350,7 +350,7 @@ func (r *SBDRemediationReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	}
 
 	// Update status to indicate fencing is in progress
-	if err := r.updateRemediationCondition(ctx, &sbdRemediation, medik8sv1alpha1.SBDRemediationConditionFencingInProgress, metav1.ConditionTrue, ReasonInProgress, fmt.Sprintf("Fencing node %s", nodeName), logger); err != nil {
+	if err := r.updateRemediationCondition(ctx, &sbdRemediation, medik8sv1alpha1.SBRRemediationConditionFencingInProgress, metav1.ConditionTrue, ReasonInProgress, fmt.Sprintf("Fencing node %s", nodeName), logger); err != nil {
 		logger.Error(err, "Failed to update remediation condition to in progress")
 		return ctrl.Result{}, err
 	}
@@ -426,7 +426,7 @@ func (r *SBDRemediationReconciler) markNodeAsSchedulable(ctx context.Context, no
 
 // writeFenceMessage writes a fence message to the target node's slot in the SBD device
 func (r *SBDRemediationReconciler) writeFenceMessage(targetNodeID uint16,
-	reason medik8sv1alpha1.SBDRemediationReason, logger logr.Logger) error {
+	reason medik8sv1alpha1.SBRRemediationReason, logger logr.Logger) error {
 	if r.fenceDevice == nil || r.fenceDevice.IsClosed() {
 		return fmt.Errorf("SBD device is not available")
 	}
@@ -434,13 +434,13 @@ func (r *SBDRemediationReconciler) writeFenceMessage(targetNodeID uint16,
 	// Create fence message
 	fenceReason := sbdprotocol.FENCE_REASON_NONE // Map from CR reason to SBD reason
 	switch reason {
-	case medik8sv1alpha1.SBDRemediationReasonNone:
+	case medik8sv1alpha1.SBRRemediationReasonNone:
 		fenceReason = sbdprotocol.FENCE_REASON_NONE
-	case medik8sv1alpha1.SBDRemediationReasonHeartbeatTimeout:
+	case medik8sv1alpha1.SBRRemediationReasonHeartbeatTimeout:
 		fenceReason = sbdprotocol.FENCE_REASON_HEARTBEAT_TIMEOUT
-	case medik8sv1alpha1.SBDRemediationReasonNodeUnresponsive:
+	case medik8sv1alpha1.SBRRemediationReasonNodeUnresponsive:
 		fenceReason = sbdprotocol.FENCE_REASON_MANUAL
-	case medik8sv1alpha1.SBDRemediationReasonManualFencing:
+	case medik8sv1alpha1.SBRRemediationReasonManualFencing:
 		fenceReason = sbdprotocol.FENCE_REASON_MANUAL
 	}
 
@@ -533,7 +533,7 @@ func (r *SBDRemediationReconciler) emitEventf(obj *medik8sv1alpha1.StorageBasedR
 }
 
 // updateRemediationCondition updates a condition on an StorageBasedRemediation CR
-func (r *SBDRemediationReconciler) updateRemediationCondition(ctx context.Context, remediation *medik8sv1alpha1.StorageBasedRemediation, conditionType medik8sv1alpha1.SBDRemediationConditionType, status metav1.ConditionStatus, reason, message string, logger logr.Logger) error {
+func (r *SBDRemediationReconciler) updateRemediationCondition(ctx context.Context, remediation *medik8sv1alpha1.StorageBasedRemediation, conditionType medik8sv1alpha1.SBRRemediationConditionType, status metav1.ConditionStatus, reason, message string, logger logr.Logger) error {
 	logger.Info("Setting Condition on StorageBasedRemediation:", "conditionType", conditionType, "reason", reason, "message", message)
 	// Set the condition
 	remediation.SetCondition(conditionType, status, reason, message)
@@ -565,8 +565,8 @@ func (r *SBDRemediationReconciler) handleFencingFailure(
 	r.emitEventOnly(remediation, EventTypeWarning, ReasonFencingFailed,
 		fmt.Sprintf("Fencing failed for node '%s': %v", nodeName, err))
 
-	remediation.SetCondition(medik8sv1alpha1.SBDRemediationConditionFencingInProgress, metav1.ConditionFalse, ReasonFailed, err.Error())
-	remediation.SetCondition(medik8sv1alpha1.SBDRemediationConditionReady, metav1.ConditionFalse, ReasonFailed, err.Error())
+	remediation.SetCondition(medik8sv1alpha1.SBRRemediationConditionFencingInProgress, metav1.ConditionFalse, ReasonFailed, err.Error())
+	remediation.SetCondition(medik8sv1alpha1.SBRRemediationConditionReady, metav1.ConditionFalse, ReasonFailed, err.Error())
 	logger.Info("Setting failure conditions on StorageBasedRemediation", "targetNode", nodeName)
 
 	if updateErr := r.Status().Update(ctx, remediation); updateErr != nil {
@@ -583,9 +583,9 @@ func (r *SBDRemediationReconciler) handleFencingSuccess(
 	logger.Info("Fencing operation completed successfully",
 		"targetNode", nodeName)
 
-	remediation.SetCondition(medik8sv1alpha1.SBDRemediationConditionFencingInProgress, metav1.ConditionFalse, ReasonCompleted, "Fencing completed")
-	remediation.SetCondition(medik8sv1alpha1.SBDRemediationConditionFencingSucceeded, metav1.ConditionTrue, ReasonCompleted, fmt.Sprintf("Node %s fenced successfully", nodeName))
-	remediation.SetCondition(medik8sv1alpha1.SBDRemediationConditionReady, metav1.ConditionTrue, ReasonCompleted, "Remediation completed successfully")
+	remediation.SetCondition(medik8sv1alpha1.SBRRemediationConditionFencingInProgress, metav1.ConditionFalse, ReasonCompleted, "Fencing completed")
+	remediation.SetCondition(medik8sv1alpha1.SBRRemediationConditionFencingSucceeded, metav1.ConditionTrue, ReasonCompleted, fmt.Sprintf("Node %s fenced successfully", nodeName))
+	remediation.SetCondition(medik8sv1alpha1.SBRRemediationConditionReady, metav1.ConditionTrue, ReasonCompleted, "Remediation completed successfully")
 	logger.Info("Setting fencing success conditions on StorageBasedRemediation", "targetNode", nodeName)
 
 	if err := r.Status().Update(ctx, remediation); err != nil {
@@ -880,7 +880,7 @@ func (r *SBDRemediationReconciler) hasNodeStoppedHeartbeating(nodeName string, l
 func (r *SBDRemediationReconciler) getFencingStartTime(remediation *medik8sv1alpha1.StorageBasedRemediation) time.Time {
 	// Look for the FencingInProgress condition timestamp
 	for _, condition := range remediation.Status.Conditions {
-		if condition.Type == string(medik8sv1alpha1.SBDRemediationConditionFencingInProgress) &&
+		if condition.Type == string(medik8sv1alpha1.SBRRemediationConditionFencingInProgress) &&
 			condition.Status == metav1.ConditionTrue {
 			return condition.LastTransitionTime.Time
 		}

@@ -29,15 +29,15 @@ func createTestSBDRemediation() *StorageBasedRemediation {
 		Status: StorageBasedRemediationStatus{
 			Conditions: []metav1.Condition{
 				{
-					Type:   string(SBDRemediationConditionReady),
+					Type:   string(SBRRemediationConditionReady),
 					Status: metav1.ConditionTrue,
 				},
 				{
-					Type:   string(SBDRemediationConditionFencingSucceeded),
+					Type:   string(SBRRemediationConditionFencingSucceeded),
 					Status: metav1.ConditionFalse,
 				},
 				{
-					Type:   string(SBDRemediationConditionFencingInProgress),
+					Type:   string(SBRRemediationConditionFencingInProgress),
 					Status: metav1.ConditionUnknown,
 				},
 			},
@@ -91,12 +91,12 @@ func TestSBDRemediation_GetCondition(t *testing.T) {
 		Status: StorageBasedRemediationStatus{
 			Conditions: []metav1.Condition{
 				{
-					Type:   string(SBDRemediationConditionReady),
+					Type:   string(SBRRemediationConditionReady),
 					Status: metav1.ConditionTrue,
 					Reason: "Succeeded",
 				},
 				{
-					Type:   string(SBDRemediationConditionFencingSucceeded),
+					Type:   string(SBRRemediationConditionFencingSucceeded),
 					Status: metav1.ConditionFalse,
 					Reason: "Failed",
 				},
@@ -106,25 +106,25 @@ func TestSBDRemediation_GetCondition(t *testing.T) {
 
 	tests := []struct {
 		name           string
-		conditionType  SBDRemediationConditionType
+		conditionType  SBRRemediationConditionType
 		expectFound    bool
 		expectedStatus metav1.ConditionStatus
 	}{
 		{
 			name:           "existing condition found",
-			conditionType:  SBDRemediationConditionReady,
+			conditionType:  SBRRemediationConditionReady,
 			expectFound:    true,
 			expectedStatus: metav1.ConditionTrue,
 		},
 		{
 			name:           "another existing condition found",
-			conditionType:  SBDRemediationConditionFencingSucceeded,
+			conditionType:  SBRRemediationConditionFencingSucceeded,
 			expectFound:    true,
 			expectedStatus: metav1.ConditionFalse,
 		},
 		{
 			name:          "non-existing condition returns nil",
-			conditionType: SBDRemediationConditionLeadershipAcquired,
+			conditionType: SBRRemediationConditionLeadershipAcquired,
 			expectFound:   false,
 		},
 	}
@@ -153,7 +153,7 @@ func TestSBDRemediation_SetCondition(t *testing.T) {
 	tests := []struct {
 		name              string
 		initialConditions []metav1.Condition
-		conditionType     SBDRemediationConditionType
+		conditionType     SBRRemediationConditionType
 		status            metav1.ConditionStatus
 		reason            string
 		message           string
@@ -163,7 +163,7 @@ func TestSBDRemediation_SetCondition(t *testing.T) {
 		{
 			name:              "add new condition",
 			initialConditions: []metav1.Condition{},
-			conditionType:     SBDRemediationConditionReady,
+			conditionType:     SBRRemediationConditionReady,
 			status:            metav1.ConditionTrue,
 			reason:            "Succeeded",
 			message:           "Remediation completed",
@@ -174,14 +174,14 @@ func TestSBDRemediation_SetCondition(t *testing.T) {
 			name: "update existing condition same status",
 			initialConditions: []metav1.Condition{
 				{
-					Type:               string(SBDRemediationConditionReady),
+					Type:               string(SBRRemediationConditionReady),
 					Status:             metav1.ConditionTrue,
 					Reason:             "InProgress",
 					Message:            "Working",
 					LastTransitionTime: metav1.NewTime(time.Now().Add(-5 * time.Minute)),
 				},
 			},
-			conditionType:    SBDRemediationConditionReady,
+			conditionType:    SBRRemediationConditionReady,
 			status:           metav1.ConditionTrue,
 			reason:           "Succeeded",
 			message:          "Completed - Same status, no transition",
@@ -192,14 +192,14 @@ func TestSBDRemediation_SetCondition(t *testing.T) {
 			name: "update existing condition different status",
 			initialConditions: []metav1.Condition{
 				{
-					Type:               string(SBDRemediationConditionReady),
+					Type:               string(SBRRemediationConditionReady),
 					Status:             metav1.ConditionFalse,
 					Reason:             "InProgress",
 					Message:            "Working",
 					LastTransitionTime: metav1.NewTime(time.Now().Add(-5 * time.Minute)),
 				},
 			},
-			conditionType:    SBDRemediationConditionReady,
+			conditionType:    SBRRemediationConditionReady,
 			status:           metav1.ConditionTrue,
 			reason:           "Succeeded",
 			message:          "Completed - Different status, should transition",
@@ -286,27 +286,27 @@ func TestSBDRemediation_IsConditionTrue(t *testing.T) {
 
 	tests := []struct {
 		name          string
-		conditionType SBDRemediationConditionType
+		conditionType SBRRemediationConditionType
 		expected      bool
 	}{
 		{
 			name:          "true condition returns true",
-			conditionType: SBDRemediationConditionReady,
+			conditionType: SBRRemediationConditionReady,
 			expected:      true,
 		},
 		{
 			name:          "false condition returns false",
-			conditionType: SBDRemediationConditionFencingSucceeded,
+			conditionType: SBRRemediationConditionFencingSucceeded,
 			expected:      false,
 		},
 		{
 			name:          "unknown condition returns false",
-			conditionType: SBDRemediationConditionFencingInProgress,
+			conditionType: SBRRemediationConditionFencingInProgress,
 			expected:      false,
 		},
 		{
 			name:          "non-existing condition returns false",
-			conditionType: SBDRemediationConditionLeadershipAcquired,
+			conditionType: SBRRemediationConditionLeadershipAcquired,
 			expected:      false,
 		},
 	}
@@ -326,15 +326,15 @@ func TestSBDRemediation_IsConditionFalse(t *testing.T) {
 		Status: StorageBasedRemediationStatus{
 			Conditions: []metav1.Condition{
 				{
-					Type:   string(SBDRemediationConditionReady),
+					Type:   string(SBRRemediationConditionReady),
 					Status: metav1.ConditionTrue,
 				},
 				{
-					Type:   string(SBDRemediationConditionFencingSucceeded),
+					Type:   string(SBRRemediationConditionFencingSucceeded),
 					Status: metav1.ConditionFalse,
 				},
 				{
-					Type:   string(SBDRemediationConditionFencingInProgress),
+					Type:   string(SBRRemediationConditionFencingInProgress),
 					Status: metav1.ConditionUnknown,
 				},
 			},
@@ -343,27 +343,27 @@ func TestSBDRemediation_IsConditionFalse(t *testing.T) {
 
 	tests := []struct {
 		name          string
-		conditionType SBDRemediationConditionType
+		conditionType SBRRemediationConditionType
 		expected      bool
 	}{
 		{
 			name:          "true condition returns false",
-			conditionType: SBDRemediationConditionReady,
+			conditionType: SBRRemediationConditionReady,
 			expected:      false,
 		},
 		{
 			name:          "false condition returns true",
-			conditionType: SBDRemediationConditionFencingSucceeded,
+			conditionType: SBRRemediationConditionFencingSucceeded,
 			expected:      true,
 		},
 		{
 			name:          "unknown condition returns false",
-			conditionType: SBDRemediationConditionFencingInProgress,
+			conditionType: SBRRemediationConditionFencingInProgress,
 			expected:      false,
 		},
 		{
 			name:          "non-existing condition returns false",
-			conditionType: SBDRemediationConditionLeadershipAcquired,
+			conditionType: SBRRemediationConditionLeadershipAcquired,
 			expected:      false,
 		},
 	}
@@ -383,27 +383,27 @@ func TestSBDRemediation_IsConditionUnknown(t *testing.T) {
 
 	tests := []struct {
 		name          string
-		conditionType SBDRemediationConditionType
+		conditionType SBRRemediationConditionType
 		expected      bool
 	}{
 		{
 			name:          "true condition returns false",
-			conditionType: SBDRemediationConditionReady,
+			conditionType: SBRRemediationConditionReady,
 			expected:      false,
 		},
 		{
 			name:          "false condition returns false",
-			conditionType: SBDRemediationConditionFencingSucceeded,
+			conditionType: SBRRemediationConditionFencingSucceeded,
 			expected:      false,
 		},
 		{
 			name:          "unknown condition returns true",
-			conditionType: SBDRemediationConditionFencingInProgress,
+			conditionType: SBRRemediationConditionFencingInProgress,
 			expected:      true,
 		},
 		{
 			name:          "non-existing condition returns true",
-			conditionType: SBDRemediationConditionLeadershipAcquired,
+			conditionType: SBRRemediationConditionLeadershipAcquired,
 			expected:      true,
 		},
 	}
@@ -430,7 +430,7 @@ func TestSBDRemediation_HelperMethods(t *testing.T) {
 
 		// Set fencing succeeded condition
 		remediation.SetCondition(
-			SBDRemediationConditionFencingSucceeded,
+			SBRRemediationConditionFencingSucceeded,
 			metav1.ConditionTrue,
 			"Succeeded",
 			"Fencing completed",
@@ -440,7 +440,7 @@ func TestSBDRemediation_HelperMethods(t *testing.T) {
 		}
 
 		// Set to false
-		remediation.SetCondition(SBDRemediationConditionFencingSucceeded, metav1.ConditionFalse, "Failed", "Fencing failed")
+		remediation.SetCondition(SBRRemediationConditionFencingSucceeded, metav1.ConditionFalse, "Failed", "Fencing failed")
 		if remediation.IsFencingSucceeded() {
 			t.Error("Expected IsFencingSucceeded to be false after setting to false")
 		}
@@ -457,7 +457,7 @@ func TestSBDRemediation_HelperMethods(t *testing.T) {
 
 		// Set fencing in progress condition
 		remediation.SetCondition(
-			SBDRemediationConditionFencingInProgress,
+			SBRRemediationConditionFencingInProgress,
 			metav1.ConditionTrue,
 			"InProgress",
 			"Fencing in progress",
@@ -477,7 +477,7 @@ func TestSBDRemediation_HelperMethods(t *testing.T) {
 		}
 
 		// Set ready condition
-		remediation.SetCondition(SBDRemediationConditionReady, metav1.ConditionTrue, "Succeeded", "Ready")
+		remediation.SetCondition(SBRRemediationConditionReady, metav1.ConditionTrue, "Succeeded", "Ready")
 		if !remediation.IsReady() {
 			t.Error("Expected IsReady to be true after setting condition")
 		}
@@ -494,7 +494,7 @@ func TestSBDRemediation_HelperMethods(t *testing.T) {
 
 		// Set leadership condition
 		remediation.SetCondition(
-			SBDRemediationConditionLeadershipAcquired,
+			SBRRemediationConditionLeadershipAcquired,
 			metav1.ConditionTrue,
 			"Acquired",
 			"Leadership acquired",
@@ -514,24 +514,24 @@ func TestSBDRemediation_MultipleConditions(t *testing.T) {
 
 	// Set multiple conditions in sequence
 	remediation.SetCondition(
-		SBDRemediationConditionLeadershipAcquired,
+		SBRRemediationConditionLeadershipAcquired,
 		metav1.ConditionTrue,
 		"Acquired",
 		"Leadership acquired",
 	)
 	remediation.SetCondition(
-		SBDRemediationConditionFencingInProgress,
+		SBRRemediationConditionFencingInProgress,
 		metav1.ConditionTrue,
 		"InProgress",
 		"Fencing started",
 	)
 	remediation.SetCondition(
-		SBDRemediationConditionFencingSucceeded,
+		SBRRemediationConditionFencingSucceeded,
 		metav1.ConditionTrue,
 		"Succeeded",
 		"Fencing completed",
 	)
-	remediation.SetCondition(SBDRemediationConditionReady, metav1.ConditionTrue, "Succeeded", "Remediation complete")
+	remediation.SetCondition(SBRRemediationConditionReady, metav1.ConditionTrue, "Succeeded", "Remediation complete")
 
 	// Verify all conditions are present
 	if len(remediation.Status.Conditions) != 4 {
@@ -554,7 +554,7 @@ func TestSBDRemediation_MultipleConditions(t *testing.T) {
 
 	// Update one condition and verify others remain unchanged
 	remediation.SetCondition(
-		SBDRemediationConditionFencingInProgress,
+		SBRRemediationConditionFencingInProgress,
 		metav1.ConditionFalse,
 		"Completed",
 		"Fencing no longer in progress",
@@ -582,11 +582,11 @@ func TestSBDRemediation_MultipleConditions(t *testing.T) {
 
 func TestSBDRemediationConstants(t *testing.T) {
 	// Test condition type constants
-	expectedConditions := map[SBDRemediationConditionType]string{
-		SBDRemediationConditionLeadershipAcquired: "LeadershipAcquired",
-		SBDRemediationConditionFencingInProgress:  "FencingInProgress",
-		SBDRemediationConditionFencingSucceeded:   "FencingSucceeded",
-		SBDRemediationConditionReady:              "Ready",
+	expectedConditions := map[SBRRemediationConditionType]string{
+		SBRRemediationConditionLeadershipAcquired: "LeadershipAcquired",
+		SBRRemediationConditionFencingInProgress:  "FencingInProgress",
+		SBRRemediationConditionFencingSucceeded:   "FencingSucceeded",
+		SBRRemediationConditionReady:              "Ready",
 	}
 
 	for condType, expectedString := range expectedConditions {
@@ -597,10 +597,10 @@ func TestSBDRemediationConstants(t *testing.T) {
 	}
 
 	// Test reason constants
-	expectedReasons := map[SBDRemediationReason]string{
-		SBDRemediationReasonHeartbeatTimeout: "HeartbeatTimeout",
-		SBDRemediationReasonNodeUnresponsive: "NodeUnresponsive",
-		SBDRemediationReasonManualFencing:    "ManualFencing",
+	expectedReasons := map[SBRRemediationReason]string{
+		SBRRemediationReasonHeartbeatTimeout: "HeartbeatTimeout",
+		SBRRemediationReasonNodeUnresponsive: "NodeUnresponsive",
+		SBRRemediationReasonManualFencing:    "ManualFencing",
 	}
 
 	for reason, expectedString := range expectedReasons {
