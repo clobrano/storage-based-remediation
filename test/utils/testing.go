@@ -189,7 +189,7 @@ func (tn *TestNamespace) Cleanup() error {
 // CreateStorageBasedRemediationConfig creates a test StorageBasedRemediationConfig with common defaults
 func (tn *TestNamespace) CreateStorageBasedRemediationConfig(name string,
 	options ...func(*medik8sv1alpha1.StorageBasedRemediationConfig)) (*medik8sv1alpha1.StorageBasedRemediationConfig, error) {
-	sbdConfig := &medik8sv1alpha1.StorageBasedRemediationConfig{
+	sbrConfig := &medik8sv1alpha1.StorageBasedRemediationConfig{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: tn.Name,
@@ -210,40 +210,40 @@ func (tn *TestNamespace) CreateStorageBasedRemediationConfig(name string,
 
 	// Apply any custom options
 	for _, option := range options {
-		option(sbdConfig)
+		option(sbrConfig)
 	}
 
-	err := tn.Clients.Client.Create(tn.Clients.Context, sbdConfig)
+	err := tn.Clients.Client.Create(tn.Clients.Context, sbrConfig)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create StorageBasedRemediationConfig %s: %w", name, err)
 	}
 
-	return sbdConfig, nil
+	return sbrConfig, nil
 }
 
 // CleanupStorageBasedRemediationConfig deletes an StorageBasedRemediationConfig and waits for cleanup to complete
-func (tn *TestNamespace) CleanupStorageBasedRemediationConfig(sbdConfig *medik8sv1alpha1.StorageBasedRemediationConfig) error {
-	err := tn.Clients.Client.Delete(tn.Clients.Context, sbdConfig)
+func (tn *TestNamespace) CleanupStorageBasedRemediationConfig(sbrConfig *medik8sv1alpha1.StorageBasedRemediationConfig) error {
+	err := tn.Clients.Client.Delete(tn.Clients.Context, sbrConfig)
 	if err != nil && !errors.IsNotFound(err) {
-		return fmt.Errorf("failed to delete StorageBasedRemediationConfig %s: %w", sbdConfig.Name, err)
+		return fmt.Errorf("failed to delete StorageBasedRemediationConfig %s: %w", sbrConfig.Name, err)
 	}
 
 	// Wait for StorageBasedRemediationConfig to be fully deleted
 	Eventually(func() bool {
 		var config medik8sv1alpha1.StorageBasedRemediationConfig
 		err := tn.Clients.Client.Get(tn.Clients.Context, client.ObjectKey{
-			Name:      sbdConfig.Name,
+			Name:      sbrConfig.Name,
 			Namespace: tn.Name,
 		}, &config)
 		if err != nil && errors.IsNotFound(err) {
 			return true
 		} else if err != nil {
-			GinkgoWriter.Printf("Failed to get StorageBasedRemediationConfig %s: %v\n", sbdConfig.Name, err)
+			GinkgoWriter.Printf("Failed to get StorageBasedRemediationConfig %s: %v\n", sbrConfig.Name, err)
 			return false
 		}
-		GinkgoWriter.Printf("Got StorageBasedRemediationConfig %s\n", sbdConfig.Name)
+		GinkgoWriter.Printf("Got StorageBasedRemediationConfig %s\n", sbrConfig.Name)
 		return false
-	}, time.Minute*5, time.Second*5).Should(BeTrue(), fmt.Sprintf("StorageBasedRemediationConfig %s not deleted", sbdConfig.Name))
+	}, time.Minute*5, time.Second*5).Should(BeTrue(), fmt.Sprintf("StorageBasedRemediationConfig %s not deleted", sbrConfig.Name))
 
 	// Wait for associated pods to be terminated, with force deletion for stuck non-running pods
 	podCleanupStartTime := time.Now()
@@ -254,7 +254,7 @@ func (tn *TestNamespace) CleanupStorageBasedRemediationConfig(sbdConfig *medik8s
 		pods := &corev1.PodList{}
 		err := tn.Clients.Client.List(tn.Clients.Context, pods,
 			client.InNamespace(tn.Name),
-			client.MatchingLabels{"sbdconfig": sbdConfig.Name})
+			client.MatchingLabels{"sbdconfig": sbrConfig.Name})
 		if err != nil {
 			GinkgoWriter.Printf("Failed to list pods: %v\n", err)
 			return -1
@@ -300,19 +300,19 @@ func (tn *TestNamespace) CleanupStorageBasedRemediationConfig(sbdConfig *medik8s
 		}
 
 		return len(pods.Items)
-	}, time.Minute*5, time.Second*10).Should(Equal(0), fmt.Sprintf("StorageBasedRemediationConfig %s pods not deleted", sbdConfig.Name))
+	}, time.Minute*5, time.Second*10).Should(Equal(0), fmt.Sprintf("StorageBasedRemediationConfig %s pods not deleted", sbrConfig.Name))
 
 	// Wait for associated DaemonSets to be deleted
 	Eventually(func() int {
 		daemonSets := &appsv1.DaemonSetList{}
 		err := tn.Clients.Client.List(tn.Clients.Context, daemonSets,
 			client.InNamespace(tn.Name),
-			client.MatchingLabels{"sbdconfig": sbdConfig.Name})
+			client.MatchingLabels{"sbdconfig": sbrConfig.Name})
 		if err != nil {
 			return -1
 		}
 		return len(daemonSets.Items)
-	}, time.Minute*5, time.Second*5).Should(Equal(0), fmt.Sprintf("StorageBasedRemediationConfig %s DaemonSets not deleted", sbdConfig.Name))
+	}, time.Minute*5, time.Second*5).Should(Equal(0), fmt.Sprintf("StorageBasedRemediationConfig %s DaemonSets not deleted", sbrConfig.Name))
 
 	return nil
 }
@@ -1237,9 +1237,9 @@ type ValidateAgentDeploymentOptions struct {
 }
 
 // DefaultValidateAgentDeploymentOptions returns sensible defaults for validation
-func DefaultValidateAgentDeploymentOptions(sbdConfigName string) ValidateAgentDeploymentOptions {
+func DefaultValidateAgentDeploymentOptions(sbrConfigName string) ValidateAgentDeploymentOptions {
 	return ValidateAgentDeploymentOptions{
-		StorageBasedRemediationConfigName: sbdConfigName,
+		StorageBasedRemediationConfigName: sbrConfigName,
 		ExpectedArgs: []string{
 			"--watchdog-path=/dev/watchdog",
 			"--watchdog-timeout=1m30s",
@@ -1412,11 +1412,11 @@ func (sav *SBRAgentValidator) ValidateNoNodeReboots(opts ValidateAgentDeployment
 func CleanupStorageBasedRemediationConfigs(testNamespace *TestNamespace) {
 	By("Cleaning up SBD configuration and waiting for agents to terminate")
 	// Clean up all StorageBasedRemediationConfigs in the test namespace
-	sbdConfigs := &medik8sv1alpha1.StorageBasedRemediationConfigList{}
+	sbrConfigs := &medik8sv1alpha1.StorageBasedRemediationConfigList{}
 	err := testNamespace.Clients.Client.List(
-		testNamespace.Clients.Context, sbdConfigs, client.InNamespace(testNamespace.Name))
+		testNamespace.Clients.Context, sbrConfigs, client.InNamespace(testNamespace.Name))
 	if err == nil {
-		for _, config := range sbdConfigs.Items {
+		for _, config := range sbrConfigs.Items {
 			err := testNamespace.CleanupStorageBasedRemediationConfig(&config)
 			if err != nil {
 				GinkgoWriter.Printf("Warning: failed to cleanup StorageBasedRemediationConfig %s: %v\n", config.Name, err)
@@ -1426,11 +1426,11 @@ func CleanupStorageBasedRemediationConfigs(testNamespace *TestNamespace) {
 
 	By("Cleaning up StorageBasedRemediation CRs to prevent namespace deletion issues")
 	// Clean up all SBDRemediations in the test namespace
-	sbdRemediations := &medik8sv1alpha1.StorageBasedRemediationList{}
+	sbrRemediations := &medik8sv1alpha1.StorageBasedRemediationList{}
 	err = testNamespace.Clients.Client.List(
-		testNamespace.Clients.Context, sbdRemediations, client.InNamespace(testNamespace.Name))
+		testNamespace.Clients.Context, sbrRemediations, client.InNamespace(testNamespace.Name))
 	if err == nil {
-		for _, remediation := range sbdRemediations.Items {
+		for _, remediation := range sbrRemediations.Items {
 			// Remove finalizers first to prevent stuck resources
 			if len(remediation.Finalizers) > 0 {
 				remediation.Finalizers = nil

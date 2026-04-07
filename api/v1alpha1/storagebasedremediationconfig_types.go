@@ -362,11 +362,11 @@ func (s *StorageBasedRemediationConfigSpec) GetPeerCheckInterval() time.Duration
 }
 
 // GetSharedStoragePVCName returns the generated PVC name for shared storage
-func (s *StorageBasedRemediationConfigSpec) GetSharedStoragePVCName(sbdConfigName string) string {
+func (s *StorageBasedRemediationConfigSpec) GetSharedStoragePVCName(sbrConfigName string) string {
 	if s.SharedStorageClass == "" {
 		return ""
 	}
-	return fmt.Sprintf("%s-shared-storage", sbdConfigName)
+	return fmt.Sprintf("%s-shared-storage", sbrConfigName)
 }
 
 // GetSharedStorageStorageClass returns the storage class name for shared storage

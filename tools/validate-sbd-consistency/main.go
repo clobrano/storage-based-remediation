@@ -46,9 +46,9 @@ func main() {
 	if len(os.Args) > 1 {
 		namespace = os.Args[1]
 	}
-	var sbdConfigName string
+	var sbrConfigName string
 	if len(os.Args) > 2 {
-		sbdConfigName = os.Args[2]
+		sbrConfigName = os.Args[2]
 	}
 
 	fmt.Printf("🔍 SBD Device Consistency Validator\n")
@@ -56,8 +56,8 @@ func main() {
 	if namespace != "" {
 		fmt.Printf("Namespace: %s\n", namespace)
 	}
-	if sbdConfigName != "" {
-		fmt.Printf("StorageBasedRemediationConfig: %s\n", sbdConfigName)
+	if sbrConfigName != "" {
+		fmt.Printf("StorageBasedRemediationConfig: %s\n", sbrConfigName)
 	}
 	fmt.Printf("Time: %s\n\n", time.Now().Format("2006-01-02 15:04:05"))
 
@@ -74,23 +74,23 @@ func main() {
 
 	testClients := &utils.TestClients{}
 
-	// If sbdConfigName is empty, find the first StorageBasedRemediationConfig in the namespace and use it
-	if sbdConfigName == "" {
+	// If sbrConfigName is empty, find the first StorageBasedRemediationConfig in the namespace and use it
+	if sbrConfigName == "" {
 		fmt.Printf("No StorageBasedRemediationConfig name provided, discovering first StorageBasedRemediationConfig in namespace %q...\n", namespace)
-		sbdConfigs, err := getStorageBasedRemediationConfigs(namespace)
+		sbrConfigs, err := getStorageBasedRemediationConfigs(namespace)
 		if err != nil {
 			log.Fatalf("Failed to list StorageBasedRemediationConfigs in namespace %q: %v", namespace, err)
 		}
-		if len(sbdConfigs) == 0 {
+		if len(sbrConfigs) == 0 {
 			log.Fatalf("No StorageBasedRemediationConfig resources found in namespace %q", namespace)
 		}
-		sbdConfigName = sbdConfigs[0]
-		fmt.Printf("Using StorageBasedRemediationConfig: %s in namespace %s\n", sbdConfigName, namespace)
+		sbrConfigName = sbrConfigs[0]
+		fmt.Printf("Using StorageBasedRemediationConfig: %s in namespace %s\n", sbrConfigName, namespace)
 	}
 
 	// Discover SBD agent pods
 	fmt.Printf("🚀 Discovering SBD agent pods...\n")
-	pods, err := getSBRAgentPods(clientset, namespace, sbdConfigName)
+	pods, err := getSBRAgentPods(clientset, namespace, sbrConfigName)
 	if err != nil {
 		log.Fatalf("Failed to get SBD agent pods: %v", err)
 	}
@@ -222,7 +222,7 @@ func getStorageBasedRemediationConfigs(namespace string) ([]string, error) {
 		return nil, err
 	}
 
-	sbdConfigGVR := schema.GroupVersionResource{
+	sbrConfigGVR := schema.GroupVersionResource{
 		Group:    "storage-based-remediation.medik8s.io",
 		Version:  "v1alpha1",
 		Resource: "storagebasedremediationconfigs",
@@ -231,10 +231,10 @@ func getStorageBasedRemediationConfigs(namespace string) ([]string, error) {
 	var list *unstructured.UnstructuredList
 	if namespace == "" {
 		// Search all namespaces
-		list, err = dynamicClient.Resource(sbdConfigGVR).List(context.TODO(), metav1.ListOptions{})
+		list, err = dynamicClient.Resource(sbrConfigGVR).List(context.TODO(), metav1.ListOptions{})
 	} else {
 		// Search specific namespace
-		list, err = dynamicClient.Resource(sbdConfigGVR).Namespace(namespace).List(context.TODO(), metav1.ListOptions{})
+		list, err = dynamicClient.Resource(sbrConfigGVR).Namespace(namespace).List(context.TODO(), metav1.ListOptions{})
 	}
 	if err != nil {
 		return nil, err
@@ -249,10 +249,10 @@ func getStorageBasedRemediationConfigs(namespace string) ([]string, error) {
 }
 
 // getSBRAgentPods discovers SBD agent pods in the given namespace
-func getSBRAgentPods(clientset *kubernetes.Clientset, namespace, sbdConfigName string) ([]string, error) {
+func getSBRAgentPods(clientset *kubernetes.Clientset, namespace, sbrConfigName string) ([]string, error) {
 	var labelSelector string
-	if sbdConfigName != "" {
-		labelSelector = fmt.Sprintf("sbdconfig=%s", sbdConfigName)
+	if sbrConfigName != "" {
+		labelSelector = fmt.Sprintf("sbdconfig=%s", sbrConfigName)
 	} else {
 		labelSelector = "app.kubernetes.io/name=sbd-agent"
 	}

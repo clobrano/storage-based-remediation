@@ -1199,13 +1199,13 @@ func TestStorageBasedRemediationConfigSpec_GetSharedStoragePVCName(t *testing.T)
 	tests := []struct {
 		name          string
 		spec          StorageBasedRemediationConfigSpec
-		sbdConfigName string
+		sbrConfigName string
 		expected      string
 	}{
 		{
 			name:          "no storage class configured",
 			spec:          StorageBasedRemediationConfigSpec{},
-			sbdConfigName: "test-config",
+			sbrConfigName: "test-config",
 			expected:      "",
 		},
 		{
@@ -1213,7 +1213,7 @@ func TestStorageBasedRemediationConfigSpec_GetSharedStoragePVCName(t *testing.T)
 			spec: StorageBasedRemediationConfigSpec{
 				SharedStorageClass: "efs-sc",
 			},
-			sbdConfigName: "my-sbd-config",
+			sbrConfigName: "my-sbd-config",
 			expected:      "my-sbd-config-shared-storage",
 		},
 		{
@@ -1221,14 +1221,14 @@ func TestStorageBasedRemediationConfigSpec_GetSharedStoragePVCName(t *testing.T)
 			spec: StorageBasedRemediationConfigSpec{
 				SharedStorageClass: "nfs-client",
 			},
-			sbdConfigName: "sbd-config-with-shared-storage",
+			sbrConfigName: "sbd-config-with-shared-storage",
 			expected:      "sbd-config-with-shared-storage-shared-storage",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := tt.spec.GetSharedStoragePVCName(tt.sbdConfigName)
+			result := tt.spec.GetSharedStoragePVCName(tt.sbrConfigName)
 			if result != tt.expected {
 				t.Errorf("GetSharedStoragePVCName() = %v, expected %v", result, tt.expected)
 			}

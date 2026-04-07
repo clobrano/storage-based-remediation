@@ -136,22 +136,22 @@ func createTestSBRAgentWithFileLocking(t *testing.T, nodeName string, metricsPor
 
 	// Create temporary SBD device files (both heartbeat and fence)
 	tmpDir := t.TempDir()
-	sbdPath := tmpDir + "/test-sbd"
-	fencePath := sbdPath + "-fence"
+	sbrPath := tmpDir + "/test-sbd"
+	fencePath := sbrPath + "-fence"
 
 	mockWatchdog := mocks.NewMockWatchdog(tmpDir + "/watchdog")
-	mockHeartbeatDevice := mocks.NewMockBlockDevice(sbdPath, 1024*1024)
+	mockHeartbeatDevice := mocks.NewMockBlockDevice(sbrPath, 1024*1024)
 	mockFenceDevice := mocks.NewMockBlockDevice(fencePath, 1024*1024)
 
 	// Create both heartbeat and fence device files
-	if err := os.WriteFile(sbdPath, make([]byte, 1024*1024), 0644); err != nil {
+	if err := os.WriteFile(sbrPath, make([]byte, 1024*1024), 0644); err != nil {
 		t.Fatalf("Failed to create test SBD heartbeat device: %v", err)
 	}
 	if err := os.WriteFile(fencePath, make([]byte, 1024*1024), 0644); err != nil {
 		t.Fatalf("Failed to create test SBD fence device: %v", err)
 	}
 
-	agent, err := NewSBRAgentWithWatchdog(mockWatchdog, sbdPath, nodeName, "test-cluster", 1,
+	agent, err := NewSBRAgentWithWatchdog(mockWatchdog, sbrPath, nodeName, "test-cluster", 1,
 		1*time.Second, 1*time.Second, 1*time.Second, 1*time.Second, 30, "panic", metricsPort,
 		10*time.Minute, fileLockingEnabled, 2*time.Second,
 		testutils.NewFakeClient(t), &rest.Config{}, createManagerPrefix(), false)
@@ -176,18 +176,18 @@ func TestWatchdogClosedWhenShutdownSignalReceived(t *testing.T) {
 	// Inline agent creation for this test only: same as createTestSBRAgentWithFileLocking
 	// but without t.Cleanup(cleanup), so we do not call Stop() on test exit.
 	tmpDir := t.TempDir()
-	sbdPath := tmpDir + "/test-sbd"
-	fencePath := sbdPath + "-fence"
+	sbrPath := tmpDir + "/test-sbd"
+	fencePath := sbrPath + "-fence"
 	mockWatchdog := mocks.NewMockWatchdog(tmpDir + "/watchdog")
-	mockHeartbeatDevice := mocks.NewMockBlockDevice(sbdPath, 1024*1024)
+	mockHeartbeatDevice := mocks.NewMockBlockDevice(sbrPath, 1024*1024)
 	mockFenceDevice := mocks.NewMockBlockDevice(fencePath, 1024*1024)
-	if err := os.WriteFile(sbdPath, make([]byte, 1024*1024), 0644); err != nil {
+	if err := os.WriteFile(sbrPath, make([]byte, 1024*1024), 0644); err != nil {
 		t.Fatalf("Failed to create test SBD heartbeat device: %v", err)
 	}
 	if err := os.WriteFile(fencePath, make([]byte, 1024*1024), 0644); err != nil {
 		t.Fatalf("Failed to create test SBD fence device: %v", err)
 	}
-	agent, err := NewSBRAgentWithWatchdog(mockWatchdog, sbdPath, "test-node", "test-cluster", 1,
+	agent, err := NewSBRAgentWithWatchdog(mockWatchdog, sbrPath, "test-node", "test-cluster", 1,
 		1*time.Second, 1*time.Second, 1*time.Second, 1*time.Second, 30, "panic", 555,
 		10*time.Minute, true, 2*time.Second,
 		testutils.NewFakeClient(t), &rest.Config{}, createManagerPrefix(), false)
@@ -454,7 +454,7 @@ func TestSBRAgent_PeerMonitorLoop_Integration(t *testing.T) {
 	defer cleanup()
 
 	// reduce default setting in order to speed the test
-	agent.peerMonitor.sbdTimeoutSeconds = 2
+	agent.peerMonitor.sbrTimeoutSeconds = 2
 
 	// Write heartbeats for multiple peers
 	err := mockDevice.WritePeerHeartbeat(2, 12345, 1)
@@ -499,13 +499,13 @@ func TestSBRAgent_PeerMonitorLoop_Integration(t *testing.T) {
 	}
 
 	// Wait for peers to become unhealthy (1 second timeout + check interval)
-	heartbeatInterval := time.Duration(agent.peerMonitor.sbdTimeoutSeconds) / 2 * time.Second
+	heartbeatInterval := time.Duration(agent.peerMonitor.sbrTimeoutSeconds) / 2 * time.Second
 	timeout := heartbeatInterval * MaxConsecutiveFailures
 	time.Sleep(timeout + time.Second)
 
 	// Should now have 0 healthy peers
 	if count := agent.peerMonitor.getHealthyPeerCount(); count != 0 {
-		t.Errorf("Expected 0 healthy peers after %vs timeout, got %d", agent.peerMonitor.sbdTimeoutSeconds, count)
+		t.Errorf("Expected 0 healthy peers after %vs timeout, got %d", agent.peerMonitor.sbrTimeoutSeconds, count)
 		for peerID, peer := range peers {
 			t.Errorf("Peer %d: %+v", peerID, peer)
 		}
@@ -705,12 +705,12 @@ func BenchmarkSBRAgent_WriteHeartbeat(b *testing.B) {
 
 	// Create temporary SBD device file
 	tmpDir := b.TempDir()
-	sbdPath := tmpDir + "/test-sbd"
-	if err := os.WriteFile(sbdPath, make([]byte, 1024*1024), 0644); err != nil {
+	sbrPath := tmpDir + "/test-sbd"
+	if err := os.WriteFile(sbrPath, make([]byte, 1024*1024), 0644); err != nil {
 		b.Fatalf("Failed to create test SBD device: %v", err)
 	}
 
-	agent, err := NewSBRAgentWithWatchdog(mockWatchdog, sbdPath, "test-node", "test-cluster", 1,
+	agent, err := NewSBRAgentWithWatchdog(mockWatchdog, sbrPath, "test-node", "test-cluster", 1,
 		30*time.Second, 5*time.Second, 15*time.Second, 5*time.Second, 30, "panic", 8080,
 		10*time.Minute, true, 2*time.Second, testutils.NewFakeClient(b), &rest.Config{}, createManagerPrefix(), false)
 	if err != nil {
@@ -734,12 +734,12 @@ func BenchmarkSBRAgent_ReadPeerHeartbeat(b *testing.B) {
 
 	// Create temporary SBD device file
 	tmpDir := b.TempDir()
-	sbdPath := tmpDir + "/test-sbd"
-	if err := os.WriteFile(sbdPath, make([]byte, 1024*1024), 0644); err != nil {
+	sbrPath := tmpDir + "/test-sbd"
+	if err := os.WriteFile(sbrPath, make([]byte, 1024*1024), 0644); err != nil {
 		b.Fatalf("Failed to create test SBD device: %v", err)
 	}
 
-	agent, err := NewSBRAgentWithWatchdog(mockWatchdog, sbdPath, "test-node", "test-cluster", 1,
+	agent, err := NewSBRAgentWithWatchdog(mockWatchdog, sbrPath, "test-node", "test-cluster", 1,
 		30*time.Second, 5*time.Second, 15*time.Second, 5*time.Second, 30, "panic", 8080,
 		10*time.Minute, true, 2*time.Second, testutils.NewFakeClient(b), &rest.Config{}, createManagerPrefix(), false)
 	if err != nil {
@@ -901,7 +901,7 @@ func TestPreflightChecks_Success(t *testing.T) {
 	// Create temporary files for testing
 	tmpDir := t.TempDir()
 	watchdogPath := filepath.Join(tmpDir, "watchdog")
-	sbdPath := filepath.Join(tmpDir, "sbd")
+	sbrPath := filepath.Join(tmpDir, "sbd")
 
 	// Create mock watchdog file
 	watchdogFile, err := os.Create(watchdogPath)
@@ -911,17 +911,17 @@ func TestPreflightChecks_Success(t *testing.T) {
 	_ = watchdogFile.Close()
 
 	// Create mock SBD device file with sufficient size
-	sbdFile, err := os.Create(sbdPath)
+	sbrFile, err := os.Create(sbrPath)
 	if err != nil {
 		t.Fatalf("Failed to create mock SBD file: %v", err)
 	}
 	// Write enough data for SBD slots
 	data := make([]byte, 1024*1024) // 1MB
-	_, _ = sbdFile.Write(data)
-	_ = sbdFile.Close()
+	_, _ = sbrFile.Write(data)
+	_ = sbrFile.Close()
 
 	// Test successful pre-flight checks
-	err = runPreflightChecks(watchdogPath, sbdPath, "test-node", 1)
+	err = runPreflightChecks(watchdogPath, sbrPath, "test-node", 1)
 	if err != nil {
 		t.Errorf("Expected pre-flight checks to succeed, but got error: %v", err)
 	}
@@ -968,11 +968,11 @@ func TestPreflightChecks_SBDMissing(t *testing.T) {
 	_ = watchdogFile.Close()
 
 	// Use non-existent SBD path
-	sbdPath := "/non/existent/sbd"
+	sbrPath := "/non/existent/sbd"
 
 	// Test pre-flight checks with missing SBD device but working watchdog
 	// This should now PASS because watchdog is available (either/or logic)
-	err = runPreflightChecks(watchdogPath, sbdPath, "test-node", 1)
+	err = runPreflightChecks(watchdogPath, sbrPath, "test-node", 1)
 	if err == nil {
 		t.Errorf("Expected pre-flight checks to fail with working watchdog and missing SBD device")
 	}
@@ -995,10 +995,10 @@ func TestPreflightChecks_RequireSBDDevice(t *testing.T) {
 	_ = watchdogFile.Close()
 
 	// Empty SBD path should now fail (no more watchdog-only mode)
-	sbdPath := ""
+	sbrPath := ""
 
 	// Test pre-flight checks with empty SBD path should fail
-	err = runPreflightChecks(watchdogPath, sbdPath, "test-node", 1)
+	err = runPreflightChecks(watchdogPath, sbrPath, "test-node", 1)
 	if err == nil {
 		t.Error("Expected pre-flight checks to fail with empty SBD path, but they succeeded")
 	}
@@ -1390,22 +1390,22 @@ func TestPreflightChecks_SBDOnlyMode(t *testing.T) {
 
 	// Create temporary SBD device file with sufficient size
 	tmpDir := t.TempDir()
-	sbdPath := filepath.Join(tmpDir, "sbd")
-	sbdFile, err := os.Create(sbdPath)
+	sbrPath := filepath.Join(tmpDir, "sbd")
+	sbrFile, err := os.Create(sbrPath)
 	if err != nil {
 		t.Fatalf("Failed to create mock SBD file: %v", err)
 	}
 	// Write enough data for SBD slots
 	data := make([]byte, 1024*1024) // 1MB
-	_, _ = sbdFile.Write(data)
-	_ = sbdFile.Close()
+	_, _ = sbrFile.Write(data)
+	_ = sbrFile.Close()
 
 	// Use non-existent watchdog path (should fail)
 	watchdogPath := nonExistentWatchdogPath
 
 	// Test pre-flight checks with missing watchdog device but working SBD device
 	// This should PASS because SBD device is available (either/or logic)
-	err = runPreflightChecks(watchdogPath, sbdPath, "test-node", 1)
+	err = runPreflightChecks(watchdogPath, sbrPath, "test-node", 1)
 	if err == nil {
 		t.Errorf("Expected pre-flight checks to fail with working SBD device despite missing watchdog")
 	}
@@ -1420,11 +1420,11 @@ func TestPreflightChecks_BothFailing(t *testing.T) {
 
 	// Use non-existent paths for both watchdog and SBD device
 	watchdogPath := nonExistentWatchdogPath
-	sbdPath := "/non/existent/sbd"
+	sbrPath := "/non/existent/sbd"
 
 	// Test pre-flight checks with both watchdog and SBD device failing
 	// This should FAIL because neither component is available
-	err := runPreflightChecks(watchdogPath, sbdPath, "test-node", 1)
+	err := runPreflightChecks(watchdogPath, sbrPath, "test-node", 1)
 	if err == nil {
 		t.Error("Expected pre-flight checks to fail with both watchdog and SBD device missing, but they succeeded")
 		return
@@ -1448,9 +1448,9 @@ var _ = Describe("Fence flow with real SBD agent", func() {
 	)
 
 	// setupFenceFlowBase creates worker-2 node, temp dir with sbd/fence files, and node manager;
-	// returns tmpDir, sbdPath, fencePath, worker1ID, worker2ID. Registers DeferCleanup for node and dir.
+	// returns tmpDir, sbrPath, fencePath, worker1ID, worker2ID. Registers DeferCleanup for node and dir.
 	const fenceFlowBasePrefix = "fence-flow-"
-	setupFenceFlowBase := func() (tmpDir, sbdPath, fencePath string, worker1ID, worker2ID uint16) {
+	setupFenceFlowBase := func() (tmpDir, sbrPath, fencePath string, worker1ID, worker2ID uint16) {
 		By("Creating target node worker-2")
 		workerNode := &corev1.Node{ObjectMeta: metav1.ObjectMeta{Name: fenceFlowTargetNode}}
 		Expect(k8sClient.Create(ctx, workerNode)).To(Succeed())
@@ -1462,12 +1462,12 @@ var _ = Describe("Fence flow with real SBD agent", func() {
 		Expect(err).NotTo(HaveOccurred())
 		DeferCleanup(func() { _ = os.RemoveAll(tmpDir) })
 
-		sbdPath = filepath.Join(tmpDir, "sbd")
+		sbrPath = filepath.Join(tmpDir, "sbd")
 		fencePath = filepath.Join(tmpDir, "sbd-fence")
-		Expect(os.WriteFile(sbdPath, make([]byte, 1024*1024), 0644)).To(Succeed())
+		Expect(os.WriteFile(sbrPath, make([]byte, 1024*1024), 0644)).To(Succeed())
 		Expect(os.WriteFile(fencePath, make([]byte, 1024*1024), 0644)).To(Succeed())
 
-		heartbeatDevice, err := blockdevice.OpenWithTimeout(sbdPath, 2*time.Second, logr.Discard())
+		heartbeatDevice, err := blockdevice.OpenWithTimeout(sbrPath, 2*time.Second, logr.Discard())
 		Expect(err).NotTo(HaveOccurred())
 		nmConfig := sbdprotocol.NodeManagerConfig{
 			ClusterName:        "test-cluster",
@@ -1483,7 +1483,7 @@ var _ = Describe("Fence flow with real SBD agent", func() {
 		worker2ID, err = nm.GetNodeIDForNode("worker-2")
 		Expect(err).NotTo(HaveOccurred())
 		Expect(heartbeatDevice.Close()).To(Succeed())
-		return tmpDir, sbdPath, fencePath, worker1ID, worker2ID
+		return tmpDir, sbrPath, fencePath, worker1ID, worker2ID
 	}
 
 	// startFenceFlowAgent starts the agent in a goroutine and registers cleanup to send SIGTERM.
@@ -1502,7 +1502,7 @@ var _ = Describe("Fence flow with real SBD agent", func() {
 
 	Context("when agent sets SBRStorageUnhealthy and controller reconciles", func() {
 		It("should write fence message to device", func() {
-			tmpDir, sbdPath, fencePath, worker1ID, worker2ID := setupFenceFlowBase()
+			tmpDir, sbrPath, fencePath, worker1ID, worker2ID := setupFenceFlowBase()
 
 			// Stale age for this test: (MaxConsecutiveFailures+1)*heartbeatInterval; heartbeatInterval is 1s
 			oldStale := sbrUnhealthyConditionStaleAge
@@ -1520,7 +1520,7 @@ var _ = Describe("Fence flow with real SBD agent", func() {
 
 			By("Creating real SBD agent and starting RunUntilShutdown")
 			mockWatchdog := mocks.NewMockWatchdog(filepath.Join(tmpDir, "watchdog"))
-			agent, err := NewSBRAgentWithWatchdog(mockWatchdog, sbdPath, "worker-1", "test-cluster", worker1ID,
+			agent, err := NewSBRAgentWithWatchdog(mockWatchdog, sbrPath, "worker-1", "test-cluster", worker1ID,
 				1*time.Second, 1*time.Second, 1*time.Second, 1*time.Second, fenceFlowSBDTimeout, "panic", fenceFlowMetricsPort,
 				10*time.Minute, true, 2*time.Second,
 				k8sClient, cfg, createManagerPrefix(), false)
@@ -1604,7 +1604,7 @@ var _ = Describe("Fence flow with real SBD agent", func() {
 
 	Context("detect-only mode", func() {
 		It("should emit SBDUnhealthyDetectOnly and not SelfFenceInitiated or SBDUnhealthyWatchdogTimeout when SBD is unhealthy", func() {
-			tmpDir, sbdPath, _, worker1ID, _ := setupFenceFlowBase()
+			tmpDir, sbrPath, _, worker1ID, _ := setupFenceFlowBase()
 
 			By("Creating mock devices and making heartbeat writes fail so SBD becomes unhealthy")
 			mockHeartbeatDevice := mocks.NewMockBlockDevice("/tmp/detect-only-heartbeat", 1024*1024)
@@ -1619,7 +1619,7 @@ var _ = Describe("Fence flow with real SBD agent", func() {
 
 			By("Creating real SBD agent in detect-only mode and overriding recorder")
 			mockWatchdog := mocks.NewMockWatchdog(filepath.Join(tmpDir, "watchdog"))
-			agent, err := NewSBRAgentWithWatchdog(mockWatchdog, sbdPath, "worker-1", "test-cluster", worker1ID,
+			agent, err := NewSBRAgentWithWatchdog(mockWatchdog, sbrPath, "worker-1", "test-cluster", worker1ID,
 				1*time.Second, 1*time.Second, 1*time.Second, 1*time.Second, fenceFlowSBDTimeout, "panic", detectOnlyMetricsPort,
 				10*time.Minute, true, 2*time.Second,
 				k8sClient, cfg, createManagerPrefix(), true)
@@ -1656,7 +1656,7 @@ var _ = Describe("Fence flow with real SBD agent", func() {
 
 		var (
 			tmpDir                string
-			sbdPath               string
+			sbrPath               string
 			worker1ID, worker2ID  uint16
 			mockHeartbeatDevice   *mocks.MockBlockDevice
 			mockFenceDevice       *mocks.MockBlockDevice
@@ -1670,7 +1670,7 @@ var _ = Describe("Fence flow with real SBD agent", func() {
 
 		// setupUnhealthyFenceFlow runs common setup: base env, devices, heartbeats, recorder, agent (with given client and reboot method), start, wait for healthy.
 		setupUnhealthyFenceFlow := func(c client.Client, rebootMethod string) {
-			tmpDir, sbdPath, _, worker1ID, worker2ID = setupFenceFlowBase()
+			tmpDir, sbrPath, _, worker1ID, worker2ID = setupFenceFlowBase()
 			By("Writing initial heartbeats for worker-1 and worker-2 on mock devices")
 			mockHeartbeatDevice = mocks.NewMockBlockDevice("/tmp/"+fenceFlowUnhealthyPrefix+"heartbeat", 1024*1024)
 			mockFenceDevice = mocks.NewMockBlockDevice("/tmp/"+fenceFlowUnhealthyPrefix+"fence", 1024*1024)
@@ -1687,7 +1687,7 @@ var _ = Describe("Fence flow with real SBD agent", func() {
 			By("Creating real SBD agent (not detect-only) and overriding recorder")
 			mockWatchdog = mocks.NewMockWatchdog(filepath.Join(tmpDir, "watchdog"))
 			var err error
-			agent, err = NewSBRAgentWithWatchdog(mockWatchdog, sbdPath, "worker-1", "test-cluster", worker1ID,
+			agent, err = NewSBRAgentWithWatchdog(mockWatchdog, sbrPath, "worker-1", "test-cluster", worker1ID,
 				1*time.Second, 1*time.Second, 1*time.Second, 1*time.Second, fenceFlowSBDTimeout, rebootMethod, fenceFlowUnhealthyMetricsPort,
 				10*time.Minute, true, 2*time.Second,
 				c, cfg, controllerNamespace, false)

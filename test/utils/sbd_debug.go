@@ -63,10 +63,10 @@ type SBRNodeSummary struct {
 // GetNodeMapFromPod extracts the current node mapping from an SBD agent pod
 func (tc *TestClients) GetNodeMapFromPod(podName, namespace string) (*sbdprotocol.NodeMapTable, error) {
 	// Execute command to read node mapping file
-	sbdNodeMappingPath := fmt.Sprintf("%s/%s%s",
+	sbrNodeMappingPath := fmt.Sprintf("%s/%s%s",
 		agent.SharedStorageSBRDeviceDirectory, agent.SharedStorageSBRDeviceFile, agent.SharedStorageNodeMappingSuffix)
 
-	cmd := []string{"cat", sbdNodeMappingPath}
+	cmd := []string{"cat", sbrNodeMappingPath}
 	stdout, stderr, err := tc.execInPod(podName, namespace, cmd)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read node mapping from pod %s: %v, stderr: %s", podName, err, stderr)
@@ -80,9 +80,9 @@ func (tc *TestClients) GetSBRDeviceInfoFromPod(podName, namespace string) ([]SBR
 	// Execute command to read SBD device content
 	// Read first 255 slots (255 * 512 bytes = 130560 bytes)
 
-	sbdDevicePath := fmt.Sprintf("%s/%s", agent.SharedStorageSBRDeviceDirectory, agent.SharedStorageSBRDeviceFile)
+	sbrDevicePath := fmt.Sprintf("%s/%s", agent.SharedStorageSBRDeviceDirectory, agent.SharedStorageSBRDeviceFile)
 
-	cmd := []string{"dd", "if=" + sbdDevicePath, "bs=512", "count=255", "status=none"}
+	cmd := []string{"dd", "if=" + sbrDevicePath, "bs=512", "count=255", "status=none"}
 	stdout, stderr, err := tc.execInPod(podName, namespace, cmd)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read SBD device from pod %s: %v, stderr: %s", podName, err, stderr)

@@ -133,7 +133,7 @@ var _ = Describe("SBD Operator", Ordered, Label("e2e"), func() {
 		})
 
 		It("should inspect SBD node mapping and device state", func() {
-			testSBDInspection()
+			testSBRInspection()
 		})
 
 		It("should handle fake remediation CRs", func() {
@@ -288,7 +288,7 @@ func testBasicStorageBasedRemediationConfiguration() {
 	GinkgoWriter.Printf("Selected storage class for testing: %s\n", testStorageClassName)
 
 	name := fmt.Sprintf("test-sbd-config-%d", time.Now().UnixNano()/1000000000)
-	sbdConfig, err := testNamespace.CreateStorageBasedRemediationConfig(name, func(config *medik8sv1alpha1.StorageBasedRemediationConfig) {
+	sbrConfig, err := testNamespace.CreateStorageBasedRemediationConfig(name, func(config *medik8sv1alpha1.StorageBasedRemediationConfig) {
 		config.Spec.WatchdogPath = "/dev/watchdog"
 		config.Spec.SharedStorageClass = testStorageClassName
 		config.Spec.StaleNodeTimeout = &metav1.Duration{Duration: 2 * time.Hour}
@@ -297,7 +297,7 @@ func testBasicStorageBasedRemediationConfiguration() {
 	Expect(err).NotTo(HaveOccurred(), "StorageBasedRemediationConfig creation failed")
 
 	validator := testNamespace.NewSBRAgentValidator()
-	opts := utils.DefaultValidateAgentDeploymentOptions(sbdConfig.Name)
+	opts := utils.DefaultValidateAgentDeploymentOptions(sbrConfig.Name)
 	opts.ExpectedArgs = []string{
 		"--watchdog-path=/dev/watchdog",
 		"--watchdog-timeout=1m30s",
@@ -370,7 +370,7 @@ func testIncompatibleStorageClass() {
 	}()
 
 	By("Creating StorageBasedRemediationConfig with incompatible storage class")
-	sbdConfig, err := testNamespace.CreateStorageBasedRemediationConfig("test-bad-storage-class", func(config *medik8sv1alpha1.StorageBasedRemediationConfig) {
+	sbrConfig, err := testNamespace.CreateStorageBasedRemediationConfig("test-bad-storage-class", func(config *medik8sv1alpha1.StorageBasedRemediationConfig) {
 		config.Spec.WatchdogPath = "/dev/watchdog"
 		config.Spec.SharedStorageClass = gp3StorageClass.Name
 		config.Spec.StaleNodeTimeout = &metav1.Duration{Duration: 2 * time.Hour}
@@ -404,7 +404,7 @@ func testIncompatibleStorageClass() {
 	By("Verifying PVC was not created due to storage class incompatibility")
 	// The PVC should not be created because the storage class validation failed
 	pvc := &corev1.PersistentVolumeClaim{}
-	pvcName := sbdConfig.Spec.GetSharedStoragePVCName(sbdConfig.Name)
+	pvcName := sbrConfig.Spec.GetSharedStoragePVCName(sbrConfig.Name)
 	err = k8sClient.Get(ctx, types.NamespacedName{
 		Name:      pvcName,
 		Namespace: testNamespace.Name,
@@ -422,7 +422,7 @@ func testIncompatibleStorageClass() {
 	By("Verifying SBD agents are not deployed due to storage validation failure")
 	// The DaemonSet should not be created or should have 0 ready replicas
 	daemonSet := &appsv1.DaemonSet{}
-	daemonSetName := fmt.Sprintf("sbd-agent-%s", sbdConfig.Name)
+	daemonSetName := fmt.Sprintf("sbd-agent-%s", sbrConfig.Name)
 	err = k8sClient.Get(ctx, types.NamespacedName{
 		Name:      daemonSetName,
 		Namespace: testNamespace.Name,
@@ -698,7 +698,7 @@ func testStorageAccessInterruption(cluster ClusterInfo) {
 
 	By("Simulating NHC: creating StorageBasedRemediation for the node")
 	remediationName := targetNode.Metadata.Name
-	sbdRemediation := &medik8sv1alpha1.StorageBasedRemediation{
+	sbrRemediation := &medik8sv1alpha1.StorageBasedRemediation{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      remediationName,
 			Namespace: testNamespace.Name,
@@ -708,7 +708,7 @@ func testStorageAccessInterruption(cluster ClusterInfo) {
 			TimeoutSeconds: 300,
 		},
 	}
-	err = k8sClient.Create(ctx, sbdRemediation)
+	err = k8sClient.Create(ctx, sbrRemediation)
 	Expect(err).NotTo(HaveOccurred())
 	By(fmt.Sprintf("Created StorageBasedRemediation CR for node %s", targetNode.Metadata.Name))
 
@@ -743,7 +743,7 @@ func testStorageAccessInterruption(cluster ClusterInfo) {
 	Expect(ready).To(BeTrue(), "Node %s should be Ready after reboot", targetNode.Metadata.Name)
 
 	By("Simulating NHC: deleting StorageBasedRemediation to trigger cleanup")
-	Expect(k8sClient.Delete(ctx, sbdRemediation)).To(Succeed())
+	Expect(k8sClient.Delete(ctx, sbrRemediation)).To(Succeed())
 
 	By("Verifying node has fully recovered after fencing and shared storage restoration")
 	time.Sleep(30 * time.Second)
@@ -806,7 +806,7 @@ func testKubeletCommunicationFailure(cluster ClusterInfo) {
 	// Node name is now derived from the remediation name
 	By("Creating StorageBasedRemediation CR to simulate external operator behavior")
 	remediationName := targetNode.Metadata.Name
-	sbdRemediation := &medik8sv1alpha1.StorageBasedRemediation{
+	sbrRemediation := &medik8sv1alpha1.StorageBasedRemediation{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      remediationName,
 			Namespace: testNamespace.Name,
@@ -816,7 +816,7 @@ func testKubeletCommunicationFailure(cluster ClusterInfo) {
 			TimeoutSeconds: 300, // 5 minutes timeout for fencing
 		},
 	}
-	err = k8sClient.Create(ctx, sbdRemediation)
+	err = k8sClient.Create(ctx, sbrRemediation)
 	Expect(err).NotTo(HaveOccurred())
 	By(fmt.Sprintf("Created StorageBasedRemediation CR for node %s", targetNode.Metadata.Name))
 
@@ -866,7 +866,7 @@ func testFakeRemediation() {
 	// Create StorageBasedRemediation CR to simulate external operator (e.g., Node Healthcheck Operator)
 	By("Creating StorageBasedRemediation CR to simulate external operator behavior")
 	fakeNodeName := "fake-node"
-	sbdRemediation := &medik8sv1alpha1.StorageBasedRemediation{
+	sbrRemediation := &medik8sv1alpha1.StorageBasedRemediation{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      fakeNodeName,
 			Namespace: testNamespace.Name,
@@ -876,7 +876,7 @@ func testFakeRemediation() {
 			TimeoutSeconds: 300, // 5 minutes timeout for fencing
 		},
 	}
-	err := k8sClient.Create(ctx, sbdRemediation)
+	err := k8sClient.Create(ctx, sbrRemediation)
 	Expect(err).NotTo(HaveOccurred())
 	By(fmt.Sprintf("Created StorageBasedRemediation CR for node %s", fakeNodeName))
 }
@@ -909,7 +909,7 @@ func testNodeRemediation(cluster ClusterInfo) {
 
 	// Create StorageBasedRemediation CR to simulate external operator (e.g., Node Healthcheck Operator)
 	By("Creating StorageBasedRemediation CR to simulate external operator behavior")
-	sbdRemediation := &medik8sv1alpha1.StorageBasedRemediation{
+	sbrRemediation := &medik8sv1alpha1.StorageBasedRemediation{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      nodeName,
 			Namespace: testNamespace.Name,
@@ -919,7 +919,7 @@ func testNodeRemediation(cluster ClusterInfo) {
 			TimeoutSeconds: 300, // 5 minutes timeout for fencing
 		},
 	}
-	err := k8sClient.Create(ctx, sbdRemediation)
+	err := k8sClient.Create(ctx, sbrRemediation)
 	Expect(err).NotTo(HaveOccurred())
 	By(fmt.Sprintf("Created StorageBasedRemediation CR for node %s", nodeName))
 
@@ -969,8 +969,8 @@ func testNodeRemediation(cluster ClusterInfo) {
 	Eventually(func() bool {
 		cur := &medik8sv1alpha1.StorageBasedRemediation{}
 		if err := k8sClient.Get(ctx, types.NamespacedName{
-			Namespace: sbdRemediation.Namespace,
-			Name:      sbdRemediation.Name,
+			Namespace: sbrRemediation.Namespace,
+			Name:      sbrRemediation.Name,
 		}, cur); err != nil {
 			return false
 		}
@@ -1004,8 +1004,8 @@ func testNodeRemediation(cluster ClusterInfo) {
 	Eventually(func() bool {
 		cur := &medik8sv1alpha1.StorageBasedRemediation{}
 		if err := k8sClient.Get(ctx, types.NamespacedName{
-			Namespace: sbdRemediation.Namespace,
-			Name:      sbdRemediation.Name,
+			Namespace: sbrRemediation.Namespace,
+			Name:      sbrRemediation.Name,
 		}, cur); err != nil {
 			return false
 		}
@@ -1039,7 +1039,7 @@ func testNodeRemediation(cluster ClusterInfo) {
 
 	// Delete the StorageBasedRemediation CR to trigger cleanup (uncordon + OOS removal)
 	By("Deleting StorageBasedRemediation CR to trigger cleanup")
-	Expect(k8sClient.Delete(ctx, sbdRemediation)).To(Succeed())
+	Expect(k8sClient.Delete(ctx, sbrRemediation)).To(Succeed())
 
 	// Verify unschedulable is removed and node is schedulable again
 	By("Waiting for node to become schedulable (unschedulable cleared)")
@@ -1077,7 +1077,7 @@ func testNodeRemediation(cluster ClusterInfo) {
 	GinkgoWriter.Printf("node remediation test completed successfully\n")
 }
 
-func testSBDInspection() {
+func testSBRInspection() {
 	By("Setting up SBD configuration for inspection test")
 	testBasicStorageBasedRemediationConfiguration()
 
@@ -1557,11 +1557,11 @@ func cleanupTestArtifacts(testNamespace *utils.TestNamespace) {
 
 	// Clean up StorageBasedRemediation CRs to prevent namespace deletion issues
 	By("Cleaning up StorageBasedRemediation CRs from test namespace")
-	sbdRemediations := &medik8sv1alpha1.StorageBasedRemediationList{}
+	sbrRemediations := &medik8sv1alpha1.StorageBasedRemediationList{}
 	err := testNamespace.Clients.Client.List(
-		testNamespace.Clients.Context, sbdRemediations, client.InNamespace(testNamespace.Name))
+		testNamespace.Clients.Context, sbrRemediations, client.InNamespace(testNamespace.Name))
 	if err == nil {
-		for _, remediation := range sbdRemediations.Items {
+		for _, remediation := range sbrRemediations.Items {
 			// Remove finalizers first to prevent stuck resources
 			if len(remediation.Finalizers) > 0 {
 				remediation.Finalizers = nil

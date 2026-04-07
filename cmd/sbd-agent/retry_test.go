@@ -31,8 +31,8 @@ func TestSBRAgent_FailureTracking(t *testing.T) {
 	if agent.watchdogFailureCount != 0 {
 		t.Errorf("Expected initial watchdog failure count 0, got %d", agent.watchdogFailureCount)
 	}
-	if agent.sbdFailureCount != 0 {
-		t.Errorf("Expected initial SBD failure count 0, got %d", agent.sbdFailureCount)
+	if agent.sbrFailureCount != 0 {
+		t.Errorf("Expected initial SBD failure count 0, got %d", agent.sbrFailureCount)
 	}
 	if agent.heartbeatFailureCount != 0 {
 		t.Errorf("Expected initial heartbeat failure count 0, got %d", agent.heartbeatFailureCount)
@@ -44,9 +44,9 @@ func TestSBRAgent_FailureTracking(t *testing.T) {
 		t.Errorf("Expected watchdog failure count 1, got %d", watchdogCount)
 	}
 
-	sbdCount := agent.incrementFailureCount("sbd")
-	if sbdCount != 1 {
-		t.Errorf("Expected SBD failure count 1, got %d", sbdCount)
+	sbrCount := agent.incrementFailureCount("sbd")
+	if sbrCount != 1 {
+		t.Errorf("Expected SBD failure count 1, got %d", sbrCount)
 	}
 
 	heartbeatCount := agent.incrementFailureCount("heartbeat")
@@ -61,8 +61,8 @@ func TestSBRAgent_FailureTracking(t *testing.T) {
 	}
 
 	agent.resetFailureCount("sbd")
-	if agent.sbdFailureCount != 0 {
-		t.Errorf("Expected SBD failure count reset to 0, got %d", agent.sbdFailureCount)
+	if agent.sbrFailureCount != 0 {
+		t.Errorf("Expected SBD failure count reset to 0, got %d", agent.sbrFailureCount)
 	}
 
 	agent.resetFailureCount("heartbeat")
@@ -128,7 +128,7 @@ func TestSBRAgent_FailureCountReset(t *testing.T) {
 	agent.incrementFailureCount("heartbeat")
 
 	// Verify counts are non-zero
-	if agent.watchdogFailureCount == 0 || agent.sbdFailureCount == 0 || agent.heartbeatFailureCount == 0 {
+	if agent.watchdogFailureCount == 0 || agent.sbrFailureCount == 0 || agent.heartbeatFailureCount == 0 {
 		t.Error("Failure counts should be non-zero before reset")
 	}
 
@@ -142,8 +142,8 @@ func TestSBRAgent_FailureCountReset(t *testing.T) {
 	if agent.watchdogFailureCount != 1 {
 		t.Errorf("Expected watchdog failure count 1 after reset, got %d", agent.watchdogFailureCount)
 	}
-	if agent.sbdFailureCount != 0 {
-		t.Errorf("Expected SBD failure count 0 after reset, got %d", agent.sbdFailureCount)
+	if agent.sbrFailureCount != 0 {
+		t.Errorf("Expected SBD failure count 0 after reset, got %d", agent.sbrFailureCount)
 	}
 	if agent.heartbeatFailureCount != 0 {
 		t.Errorf("Expected heartbeat failure count 0 after reset, got %d", agent.heartbeatFailureCount)

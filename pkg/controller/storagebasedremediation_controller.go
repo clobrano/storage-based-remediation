@@ -105,7 +105,7 @@ type SBRRemediationReconciler struct {
 	apiRetryConfig    retry.Config
 
 	// SBD device for fencing operations
-	sbdDevice   mocks.BlockDeviceInterface
+	sbrDevice   mocks.BlockDeviceInterface
 	fenceDevice mocks.BlockDeviceInterface
 	nodeManager *sbdprotocol.NodeManager
 	ownNodeID   uint16
@@ -121,7 +121,7 @@ type SBRRemediationReconciler struct {
 
 // SetSBRDevices allows setting custom SBR devices (useful for testing)
 func (s *SBRRemediationReconciler) SetSBRDevices(heartbeatDevice, fenceDevice mocks.BlockDeviceInterface) {
-	s.sbdDevice = heartbeatDevice
+	s.sbrDevice = heartbeatDevice
 	s.fenceDevice = fenceDevice
 }
 
@@ -185,8 +185,8 @@ func (r *SBRRemediationReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	}
 
 	// Fetch the StorageBasedRemediation instance
-	var sbdRemediation medik8sv1alpha1.StorageBasedRemediation
-	if err := r.Get(ctx, req.NamespacedName, &sbdRemediation); err != nil {
+	var sbrRemediation medik8sv1alpha1.StorageBasedRemediation
+	if err := r.Get(ctx, req.NamespacedName, &sbrRemediation); err != nil {
 		if apierrors.IsNotFound(err) {
 			// StorageBasedRemediation resource not found, probably deleted
 			logger.Info("StorageBasedRemediation resource not found, probably deleted",
@@ -201,48 +201,48 @@ func (r *SBRRemediationReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	}
 
 	// Get node name from remediation name (the name is the node name)
-	nodeName := sbdRemediation.Name
+	nodeName := sbrRemediation.Name
 
 	// Don't fence ourselves
 	if nodeName == r.ownNodeName {
 		logger.Info("Found own node in remediation request, skipping")
-		r.emitEventOnly(&sbdRemediation, EventTypeNormal, ReasonCompleted,
+		r.emitEventOnly(&sbrRemediation, EventTypeNormal, ReasonCompleted,
 			"Skipping remediation for own node")
 		return ctrl.Result{}, nil
 	}
 
 	// Add resource-specific context to logger
 	logger = logger.WithValues(
-		"sbdremediation.name", sbdRemediation.Name,
-		"sbdremediation.namespace", sbdRemediation.Namespace,
-		"sbdremediation.generation", sbdRemediation.Generation,
-		"sbdremediation.resourceVersion", sbdRemediation.ResourceVersion,
+		"sbdremediation.name", sbrRemediation.Name,
+		"sbdremediation.namespace", sbrRemediation.Namespace,
+		"sbdremediation.generation", sbrRemediation.Generation,
+		"sbdremediation.resourceVersion", sbrRemediation.ResourceVersion,
 		"nodeName", nodeName,
-		"spec.timeoutSeconds", sbdRemediation.Spec.TimeoutSeconds,
-		"status.ready", sbdRemediation.IsReady(),
-		"status.fencingSucceeded", sbdRemediation.IsFencingSucceeded(),
+		"spec.timeoutSeconds", sbrRemediation.Spec.TimeoutSeconds,
+		"status.ready", sbrRemediation.IsReady(),
+		"status.fencingSucceeded", sbrRemediation.IsFencingSucceeded(),
 	)
 
 	logger.V(1).Info("Starting StorageBasedRemediation reconciliation",
 		"nodeName", nodeName)
 
 	// Handle deletion
-	if !sbdRemediation.DeletionTimestamp.IsZero() {
+	if !sbrRemediation.DeletionTimestamp.IsZero() {
 		logger.Info("StorageBasedRemediation is being deleted, processing finalizers",
-			"deletionTimestamp", sbdRemediation.DeletionTimestamp,
-			"finalizers", sbdRemediation.Finalizers)
-		r.emitEventf(&sbdRemediation, EventTypeNormal, ReasonFinalizerProcessed,
+			"deletionTimestamp", sbrRemediation.DeletionTimestamp,
+			"finalizers", sbrRemediation.Finalizers)
+		r.emitEventf(&sbrRemediation, EventTypeNormal, ReasonFinalizerProcessed,
 			"Processing deletion of StorageBasedRemediation for node '%s'", nodeName)
-		return r.handleDeletion(ctx, &sbdRemediation, logger)
+		return r.handleDeletion(ctx, &sbrRemediation, logger)
 	}
 
 	logger.V(1).Info("Checking finalizers for StorageBasedRemediation",
 		"nodeName", nodeName)
 
 	// Add finalizer if not present
-	if !controllerutil.ContainsFinalizer(&sbdRemediation, SBRRemediationFinalizer) {
-		controllerutil.AddFinalizer(&sbdRemediation, SBRRemediationFinalizer)
-		if err := r.Update(ctx, &sbdRemediation); err != nil {
+	if !controllerutil.ContainsFinalizer(&sbrRemediation, SBRRemediationFinalizer) {
+		controllerutil.AddFinalizer(&sbrRemediation, SBRRemediationFinalizer)
+		if err := r.Update(ctx, &sbrRemediation); err != nil {
 			logger.Error(err, "Failed to add finalizer")
 			return ctrl.Result{}, err
 		}
@@ -252,33 +252,33 @@ func (r *SBRRemediationReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	}
 
 	logger.V(1).Info("Checking conditions for StorageBasedRemediation",
-		"conditions", sbdRemediation.Status.Conditions)
+		"conditions", sbrRemediation.Status.Conditions)
 
 	// Emit initial event for remediation initiation
-	if len(sbdRemediation.Status.Conditions) == 0 {
-		r.emitEventf(&sbdRemediation, EventTypeNormal, ReasonRemediationInitiated,
+	if len(sbrRemediation.Status.Conditions) == 0 {
+		r.emitEventf(&sbrRemediation, EventTypeNormal, ReasonRemediationInitiated,
 			"SBD remediation initiated for node '%s'", nodeName)
 	}
 
 	logger.V(1).Info("Checking if remediation is ready",
-		"ready", sbdRemediation.IsReady(),
-		"fencingSucceeded", sbdRemediation.IsFencingSucceeded(),
-		"fencingInProgress", sbdRemediation.IsFencingInProgress(),
-		"condition", sbdRemediation.GetCondition(medik8sv1alpha1.SBRRemediationConditionFencingSucceeded),
+		"ready", sbrRemediation.IsReady(),
+		"fencingSucceeded", sbrRemediation.IsFencingSucceeded(),
+		"fencingInProgress", sbrRemediation.IsFencingInProgress(),
+		"condition", sbrRemediation.GetCondition(medik8sv1alpha1.SBRRemediationConditionFencingSucceeded),
 	)
 
 	// Check if we already completed this remediation
-	if sbdRemediation.IsFencingSucceeded() {
+	if sbrRemediation.IsFencingSucceeded() {
 		logger.Info("StorageBasedRemediation already completed successfully",
 			"fencingSucceeded", true)
 		return ctrl.Result{}, nil
 	}
 
 	// Check if fencing is already in progress
-	if sbdRemediation.IsFencingInProgress() {
+	if sbrRemediation.IsFencingInProgress() {
 		logger.Info("StorageBasedRemediation fencing already in progress")
 		// Check if target node has been fenced (stopped heartbeating and/or became NotReady)
-		fenced := r.checkFencingCompletion(ctx, &sbdRemediation, logger)
+		fenced := r.checkFencingCompletion(ctx, &sbrRemediation, logger)
 
 		if !fenced {
 			// Still waiting for fencing to complete, requeue to check again
@@ -287,9 +287,9 @@ func (r *SBRRemediationReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 			return ctrl.Result{RequeueAfter: 10 * time.Second}, nil
 		}
 		// For fresh SBD-agent remediations, delay placing the OOS taint
-		if isSBRAgentRemediation(&sbdRemediation) && isRemediationFresh(&sbdRemediation, time.Now()) {
+		if isSBRAgentRemediation(&sbrRemediation) && isRemediationFresh(&sbrRemediation, time.Now()) {
 			logger.V(1).Info("Fresh SBD-agent remediation detected; delaying OutOfService taint",
-				"age", time.Since(sbdRemediation.CreationTimestamp.Time),
+				"age", time.Since(sbrRemediation.CreationTimestamp.Time),
 				"requeueAfter", SBRAgentRemediationRequeueDelay)
 			return ctrl.Result{RequeueAfter: SBRAgentRemediationRequeueDelay}, nil
 		}
@@ -302,13 +302,13 @@ func (r *SBRRemediationReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		}
 
 		// If this is an SBD-agent remediation, stamp OOS placement time only once and requeue to avoid update conflicts
-		if isSBRAgentRemediation(&sbdRemediation) {
-			if sbdRemediation.Annotations == nil {
-				sbdRemediation.Annotations = map[string]string{}
+		if isSBRAgentRemediation(&sbrRemediation) {
+			if sbrRemediation.Annotations == nil {
+				sbrRemediation.Annotations = map[string]string{}
 			}
-			if _, exists := sbdRemediation.Annotations[SBRAgentOOSTaintTimestampAnnotation]; !exists {
-				sbdRemediation.Annotations[SBRAgentOOSTaintTimestampAnnotation] = time.Now().UTC().Format(time.RFC3339Nano)
-				if err := r.Update(ctx, &sbdRemediation); err != nil {
+			if _, exists := sbrRemediation.Annotations[SBRAgentOOSTaintTimestampAnnotation]; !exists {
+				sbrRemediation.Annotations[SBRAgentOOSTaintTimestampAnnotation] = time.Now().UTC().Format(time.RFC3339Nano)
+				if err := r.Update(ctx, &sbrRemediation); err != nil {
 					logger.Error(err, "Failed to annotate remediation with OOS placement timestamp")
 					return ctrl.Result{}, err
 				}
@@ -318,20 +318,20 @@ func (r *SBRRemediationReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		}
 
 		// Proceed with successful fencing handling
-		return ctrl.Result{}, r.handleFencingSuccess(ctx, &sbdRemediation, logger)
+		return ctrl.Result{}, r.handleFencingSuccess(ctx, &sbrRemediation, logger)
 	}
 
 	if r.nodeManager == nil {
 		err := fmt.Errorf("node manager is not available for node ID resolution")
 		logger.Error(err, "Cannot perform fencing")
-		r.emitEventf(&sbdRemediation, EventTypeWarning, ReasonFailed,
+		r.emitEventf(&sbrRemediation, EventTypeWarning, ReasonFailed,
 			"Node manager is not available for node ID resolution: %v", err)
 		return ctrl.Result{}, err
 	}
 	// Perform the actual fencing operation
 	logger.Info("Starting fencing operation",
 		"targetNode", nodeName,
-		"reason", sbdRemediation.Spec.Reason)
+		"reason", sbrRemediation.Spec.Reason)
 
 	// Ensure the node is cordoned BEFORE setting FencingInProgress
 	node := &corev1.Node{}
@@ -350,21 +350,21 @@ func (r *SBRRemediationReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	}
 
 	// Update status to indicate fencing is in progress
-	if err := r.updateRemediationCondition(ctx, &sbdRemediation, medik8sv1alpha1.SBRRemediationConditionFencingInProgress, metav1.ConditionTrue, ReasonInProgress, fmt.Sprintf("Fencing node %s", nodeName), logger); err != nil {
+	if err := r.updateRemediationCondition(ctx, &sbrRemediation, medik8sv1alpha1.SBRRemediationConditionFencingInProgress, metav1.ConditionTrue, ReasonInProgress, fmt.Sprintf("Fencing node %s", nodeName), logger); err != nil {
 		logger.Error(err, "Failed to update remediation condition to in progress")
 		return ctrl.Result{}, err
 	}
 
 	// Execute fencing
-	if err := r.executeFencing(&sbdRemediation, logger); err != nil {
-		r.handleFencingFailure(ctx, &sbdRemediation, err, logger)
+	if err := r.executeFencing(&sbrRemediation, logger); err != nil {
+		r.handleFencingFailure(ctx, &sbrRemediation, err, logger)
 		return ctrl.Result{}, err
 	}
 
 	// Fence message written successfully, now monitor for actual fencing completion
 	logger.Info("Fence message written, monitoring for target node fencing completion",
 		"targetNode", nodeName,
-		"timeoutSeconds", sbdRemediation.Spec.TimeoutSeconds)
+		"timeoutSeconds", sbrRemediation.Spec.TimeoutSeconds)
 
 	return ctrl.Result{RequeueAfter: 10 * time.Second}, nil
 }
@@ -480,8 +480,8 @@ func (r *SBRRemediationReconciler) writeFenceMessage(targetNodeID uint16,
 
 // handleDeletion handles the deletion of a StorageBasedRemediation resource
 func (r *SBRRemediationReconciler) handleDeletion(
-	ctx context.Context, sbdRemediation *medik8sv1alpha1.StorageBasedRemediation, logger logr.Logger) (ctrl.Result, error) {
-	nodeName := sbdRemediation.Name
+	ctx context.Context, sbrRemediation *medik8sv1alpha1.StorageBasedRemediation, logger logr.Logger) (ctrl.Result, error) {
+	nodeName := sbrRemediation.Name
 	// First: uncordon the node so it can accept workloads again
 	if err := r.markNodeAsSchedulable(ctx, nodeName); err != nil {
 		logger.Error(err, "Failed to mark node schedulable during remediation deletion",
@@ -503,16 +503,16 @@ func (r *SBRRemediationReconciler) handleDeletion(
 			"node", nodeName)
 		return ctrl.Result{}, err
 	}
-	r.emitEventOnly(sbdRemediation, EventTypeNormal, ReasonOOSTaintRemoved,
+	r.emitEventOnly(sbrRemediation, EventTypeNormal, ReasonOOSTaintRemoved,
 		fmt.Sprintf("Out-of-service taint removed from node '%s'", nodeName))
 
 	// Check if our finalizer is present
-	if controllerutil.ContainsFinalizer(sbdRemediation, SBRRemediationFinalizer) {
+	if controllerutil.ContainsFinalizer(sbrRemediation, SBRRemediationFinalizer) {
 		logger.Info("Removing finalizer from StorageBasedRemediation")
 
 		// Remove our finalizer from the list and update it
-		controllerutil.RemoveFinalizer(sbdRemediation, SBRRemediationFinalizer)
-		if err := r.Update(ctx, sbdRemediation); err != nil {
+		controllerutil.RemoveFinalizer(sbrRemediation, SBRRemediationFinalizer)
+		if err := r.Update(ctx, sbrRemediation); err != nil {
 			logger.Error(err, "Failed to remove finalizer")
 			return ctrl.Result{}, err
 		}
@@ -787,7 +787,7 @@ func (r *SBRRemediationReconciler) isNodeNotReady(ctx context.Context, nodeName 
 
 // hasNodeStoppedHeartbeating checks if the target node has stopped sending heartbeats to SBD device
 func (r *SBRRemediationReconciler) hasNodeStoppedHeartbeating(nodeName string, logger logr.Logger) (bool, error) {
-	if r.nodeManager == nil || r.sbdDevice == nil || r.sbdDevice.IsClosed() {
+	if r.nodeManager == nil || r.sbrDevice == nil || r.sbrDevice.IsClosed() {
 		return false, fmt.Errorf("SBD device or node manager not available")
 	}
 
@@ -801,7 +801,7 @@ func (r *SBRRemediationReconciler) hasNodeStoppedHeartbeating(nodeName string, l
 	slotOffset := int64(targetNodeID) * sbdprotocol.SBD_SLOT_SIZE
 	slotData := make([]byte, sbdprotocol.SBD_SLOT_SIZE)
 
-	n, err := r.sbdDevice.ReadAt(slotData, slotOffset)
+	n, err := r.sbrDevice.ReadAt(slotData, slotOffset)
 	if err != nil {
 		return false, fmt.Errorf("failed to read SBD slot %d: %w", targetNodeID, err)
 	}

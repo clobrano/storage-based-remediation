@@ -36,17 +36,17 @@ type StorageBasedRemediationConfigValidator struct{}
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
 func (v *StorageBasedRemediationConfigValidator) ValidateCreate(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
-	sbdConfig := obj.(*StorageBasedRemediationConfig)
-	sbrConfigLog.Info("validate create", "name", sbdConfig.Name, "namespace", sbdConfig.Namespace)
+	sbrConfig := obj.(*StorageBasedRemediationConfig)
+	sbrConfigLog.Info("validate create", "name", sbrConfig.Name, "namespace", sbrConfig.Namespace)
 
 	// Validate the StorageBasedRemediationConfig spec
-	if err := sbdConfig.Spec.ValidateAll(); err != nil {
+	if err := sbrConfig.Spec.ValidateAll(); err != nil {
 		return nil, fmt.Errorf("StorageBasedRemediationConfig spec validation failed: %w", err)
 	}
 
 	// TODO: Add node selector overlap validation once we can access the client
 	// For now, the validation logic is in the controller
-	sbrConfigLog.V(1).Info("Admission webhook validation passed", "name", sbdConfig.Name)
+	sbrConfigLog.V(1).Info("Admission webhook validation passed", "name", sbrConfig.Name)
 
 	return nil, nil
 }
@@ -56,25 +56,25 @@ func (v *StorageBasedRemediationConfigValidator) ValidateUpdate(
 	ctx context.Context,
 	oldObj, newObj runtime.Object,
 ) (admission.Warnings, error) {
-	sbdConfig := newObj.(*StorageBasedRemediationConfig)
-	sbrConfigLog.Info("validate update", "name", sbdConfig.Name, "namespace", sbdConfig.Namespace)
+	sbrConfig := newObj.(*StorageBasedRemediationConfig)
+	sbrConfigLog.Info("validate update", "name", sbrConfig.Name, "namespace", sbrConfig.Namespace)
 
 	// Validate the StorageBasedRemediationConfig spec
-	if err := sbdConfig.Spec.ValidateAll(); err != nil {
+	if err := sbrConfig.Spec.ValidateAll(); err != nil {
 		return nil, fmt.Errorf("StorageBasedRemediationConfig spec validation failed: %w", err)
 	}
 
 	// TODO: Add node selector overlap validation once we can access the client
 	// For now, the validation logic is in the controller
-	sbrConfigLog.V(1).Info("Admission webhook validation passed", "name", sbdConfig.Name)
+	sbrConfigLog.V(1).Info("Admission webhook validation passed", "name", sbrConfig.Name)
 
 	return nil, nil
 }
 
 // ValidateDelete implements webhook.Validator so a webhook will be registered for the type
 func (v *StorageBasedRemediationConfigValidator) ValidateDelete(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
-	sbdConfig := obj.(*StorageBasedRemediationConfig)
-	sbrConfigLog.Info("validate delete", "name", sbdConfig.Name, "namespace", sbdConfig.Namespace)
+	sbrConfig := obj.(*StorageBasedRemediationConfig)
+	sbrConfigLog.Info("validate delete", "name", sbrConfig.Name, "namespace", sbrConfig.Namespace)
 
 	// No validation needed for deletion
 	return nil, nil
