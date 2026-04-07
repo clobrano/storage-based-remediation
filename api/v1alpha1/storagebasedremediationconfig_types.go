@@ -29,7 +29,7 @@ import (
 	"github.com/medik8s/storage-based-remediation/pkg/agent"
 )
 
-var typesLog = logf.Log.WithName("sbdconfig-types")
+var typesLog = logf.Log.WithName("sbrconfig-types")
 
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
