@@ -232,7 +232,7 @@ func main() {
 		WebhookServer:          webhookServer,
 		HealthProbeBindAddress: probeAddr,
 		LeaderElection:         enableLeaderElection,
-		LeaderElectionID:       "sbd-operator-leader-election",
+		LeaderElectionID:       "sbr-operator-leader-election",
 		// LeaderElectionReleaseOnCancel defines if the leader should step down voluntarily
 		// when the Manager ends. This requires the binary to immediately end when the
 		// Manager is stopped, otherwise, this setting is unsafe. Setting this significantly
@@ -249,30 +249,30 @@ func main() {
 	}
 
 	// Create controllers with EventRecorder
-	// Note: SBD fencing is now handled by agents directly via integrated SBDRemediationReconciler
+	// Note: SBD fencing is now handled by agents directly via integrated SBRRemediationReconciler
 
 	// Set up leadership tracking
 	if enableLeaderElection {
-		setupLog.Info("Leader election ENABLED - SBD config controller will be performed by the elected leader")
+		setupLog.Info("Leader election ENABLED - SBR config controller will be performed by the elected leader")
 	} else {
-		setupLog.Info("Leader election DISABLED - this instance will handle SBD config controller")
+		setupLog.Info("Leader election DISABLED - this instance will handle SBR config controller")
 	}
 
 	if err := (&controller.StorageBasedRemediationConfigReconciler{
 		Client:   mgr.GetClient(),
 		Scheme:   mgr.GetScheme(),
-		Recorder: mgr.GetEventRecorderFor("sbd-config-controller"),
+		Recorder: mgr.GetEventRecorderFor("sbr-config-controller"),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "StorageBasedRemediationConfig")
 		os.Exit(1)
 	}
 
-	// Note: SBDRemediationReconciler is now run as part of the SBD agent, not the main operator
+	// Note: SBRRemediationReconciler is now run as part of the SBD agent, not the main operator
 
 	// Set up admission webhooks (only if enabled)
 	if enableWebhooks {
-		sbdConfigValidator := &medik8sv1alpha1.StorageBasedRemediationConfigValidator{}
-		if err := sbdConfigValidator.SetupWithManager(mgr); err != nil {
+		sbrConfigValidator := &medik8sv1alpha1.StorageBasedRemediationConfigValidator{}
+		if err := sbrConfigValidator.SetupWithManager(mgr); err != nil {
 			setupLog.Error(err, "unable to create webhook", "webhook", "StorageBasedRemediationConfig")
 			os.Exit(1)
 		}

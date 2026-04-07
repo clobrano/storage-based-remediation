@@ -247,8 +247,8 @@ var _ = Describe("StorageBasedRemediationConfig Controller", func() {
 			By("creating an StorageBasedRemediationConfig with shared storage")
 			resource := defaultStorageBasedRemediationConfig(resourceName, namespace)
 
-			By("testing the buildSBDAgentArgs method")
-			args := controllerReconciler.buildSBDAgentArgs(resource)
+			By("testing the buildSBRAgentArgs method")
+			args := controllerReconciler.buildSBRAgentArgs(resource)
 
 			By("verifying the sbd-device flag is set correctly")
 			expectedSBDDevice := fmt.Sprintf("--%s=%s/%s",

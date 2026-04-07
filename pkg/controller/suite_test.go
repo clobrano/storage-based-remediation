@@ -45,7 +45,7 @@ var (
 	testEnv    *envtest.Environment
 	cfg        *rest.Config
 	k8sClient  client.Client
-	reconciler *SBDRemediationReconciler
+	reconciler *SBRRemediationReconciler
 )
 
 func TestControllers(t *testing.T) {

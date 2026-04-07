@@ -58,7 +58,7 @@ var _ = Describe("StorageBasedRemediation Controller", func() {
 				Namespace: "default",
 			}
 
-			reconciler = &SBDRemediationReconciler{
+			reconciler = &SBRRemediationReconciler{
 				Client:   k8sClient,
 				Scheme:   k8sClient.Scheme(),
 				Recorder: nil, // Event recorder not needed for basic tests
@@ -74,7 +74,7 @@ var _ = Describe("StorageBasedRemediation Controller", func() {
 
 			mockHeartbeatDevice := mocks.NewMockBlockDevice("/tmp/test-sbd", 1024*1024)
 			mockFenceDevice := mocks.NewMockBlockDevice("/tmp/test-sbd-fence", 1024*1024)
-			reconciler.SetSBDDevices(mockHeartbeatDevice, mockFenceDevice)
+			reconciler.SetSBRDevices(mockHeartbeatDevice, mockFenceDevice)
 
 			nodeManager, err := sbdprotocol.NewNodeManager(mockHeartbeatDevice, config)
 			Expect(err).NotTo(HaveOccurred())
@@ -307,7 +307,7 @@ var _ = Describe("StorageBasedRemediation Controller", func() {
 		})
 
 		JustBeforeEach(func() {
-			reconciler = &SBDRemediationReconciler{Client: clientBuilder.Build()}
+			reconciler = &SBRRemediationReconciler{Client: clientBuilder.Build()}
 		})
 
 		Context("handleFencingSuccess", func() {
@@ -383,7 +383,7 @@ var _ = Describe("StorageBasedRemediation Controller", func() {
 	Context("Controller setup and configuration", func() {
 		It("should initialize properly", func() {
 			By("Creating a controller instance")
-			reconciler := &SBDRemediationReconciler{
+			reconciler := &SBRRemediationReconciler{
 				Client:   k8sClient,
 				Scheme:   k8sClient.Scheme(),
 				Recorder: nil,
@@ -401,7 +401,7 @@ var _ = Describe("StorageBasedRemediation Controller", func() {
 			})
 			Expect(err).NotTo(HaveOccurred())
 
-			reconciler := &SBDRemediationReconciler{
+			reconciler := &SBRRemediationReconciler{
 				Client:   mgr.GetClient(),
 				Scheme:   mgr.GetScheme(),
 				Recorder: mgr.GetEventRecorderFor("test-controller"),

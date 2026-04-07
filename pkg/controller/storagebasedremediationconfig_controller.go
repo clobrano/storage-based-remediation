@@ -70,15 +70,15 @@ const (
 	ReasonCleanupError                            = "CleanupError"
 	ReasonPVCManaged                              = "PVCManaged"
 	ReasonPVCError                                = "PVCError"
-	ReasonSBDDeviceInitialized                    = "SBDDeviceInitialized"
-	ReasonSBDDeviceInitError                      = "SBDDeviceInitWaiting"
+	ReasonSBRDeviceInitialized                    = "SBRDeviceInitialized"
+	ReasonSBRDeviceInitError                      = "SBRDeviceInitWaiting"
 
 	// Finalizer for cleanup operations
-	StorageBasedRemediationConfigFinalizerName = "sbd-operator.medik8s.io/cleanup"
+	StorageBasedRemediationConfigFinalizerName = "sbr-operator.medik8s.io/cleanup"
 
 	// Default image constants
-	DefaultSBDAgentImage = "sbd-agent:latest"
-	SBDOperatorName      = "sbd-operator"
+	DefaultSBRAgentImage = "sbd-agent:latest"
+	SBROperatorName      = "sbd-operator"
 
 	// Retry configuration constants for StorageBasedRemediationConfig controller
 	// MaxStorageBasedRemediationConfigRetries is the maximum number of retry attempts for StorageBasedRemediationConfig operations
@@ -114,7 +114,7 @@ func (r *StorageBasedRemediationConfigReconciler) initializeRetryConfig(logger l
 		InitialDelay:  InitialStorageBasedRemediationConfigRetryDelay,
 		MaxDelay:      MaxStorageBasedRemediationConfigRetryDelay,
 		BackoffFactor: StorageBasedRemediationConfigRetryBackoffFactor,
-		Logger:        logger.WithName("sbdconfig-retry"),
+		Logger:        logger.WithName("sbrconfig-retry"),
 	}
 }
 
@@ -200,7 +200,7 @@ func (r *StorageBasedRemediationConfigReconciler) getOperatorImage(ctx context.C
 
 	if podName == "" || podNamespace == "" {
 		logger.Error(nil, "POD_NAME or POD_NAMESPACE environment variables not set, using fallback")
-		return DefaultSBDAgentImage
+		return DefaultSBRAgentImage
 	}
 
 	// Get the current pod
@@ -208,7 +208,7 @@ func (r *StorageBasedRemediationConfigReconciler) getOperatorImage(ctx context.C
 	err := r.Get(ctx, types.NamespacedName{Name: podName, Namespace: podNamespace}, &pod)
 	if err != nil {
 		logger.Error(err, "Failed to get operator pod", "podName", podName, "podNamespace", podNamespace)
-		return DefaultSBDAgentImage // Fallback to default
+		return DefaultSBRAgentImage // Fallback to default
 	}
 
 	// Find the manager container (operator container)
@@ -227,7 +227,7 @@ func (r *StorageBasedRemediationConfigReconciler) getOperatorImage(ctx context.C
 	}
 
 	logger.Error(nil, "No containers found in operator pod, using fallback")
-	return DefaultSBDAgentImage
+	return DefaultSBRAgentImage
 }
 
 // isRunningOnOpenShift detects if the operator is running on OpenShift
@@ -665,8 +665,8 @@ func (r *StorageBasedRemediationConfigReconciler) ensurePVC(
 	return result, nil
 }
 
-// ensureSBDDevice ensures that the SBD device file exists in shared storage when SharedStorageClass is specified
-func (r *StorageBasedRemediationConfigReconciler) ensureSBDDevice(
+// ensureSBRDevice ensures that the SBD device file exists in shared storage when SharedStorageClass is specified
+func (r *StorageBasedRemediationConfigReconciler) ensureSBRDevice(
 	ctx context.Context,
 	sbdConfig *medik8sv1alpha1.StorageBasedRemediationConfig,
 	logger logr.Logger,
@@ -931,13 +931,13 @@ echo "SBD devices initialization completed successfully"
 	logger.Info("Creating SBD device initialization job")
 	if err := r.Create(ctx, desiredJob); err != nil {
 		logger.Error(err, "Failed to create SBD device initialization job")
-		r.emitEventf(sbdConfig, EventTypeWarning, ReasonSBDDeviceInitError,
+		r.emitEventf(sbdConfig, EventTypeWarning, ReasonSBRDeviceInitError,
 			"Failed to create SBD device initialization job: %v", err)
 		return controllerutil.OperationResultNone, fmt.Errorf("failed to create SBD device initialization job: %w", err)
 	}
 
 	logger.Info("SBD device initialization job created successfully, waiting for completion before creating DaemonSet")
-	r.emitEventf(sbdConfig, EventTypeNormal, ReasonSBDDeviceInitialized,
+	r.emitEventf(sbdConfig, EventTypeNormal, ReasonSBRDeviceInitialized,
 		"SBD device initialization job '%s' created successfully", jobName)
 
 	return controllerutil.OperationResultCreated, nil
@@ -966,7 +966,7 @@ echo "SBD devices initialization completed successfully"
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.21.0/pkg/reconcile
 func (r *StorageBasedRemediationConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	logger := log.FromContext(ctx).WithName("sbdconfig-controller").WithValues(
+	logger := log.FromContext(ctx).WithName("sbrconfig-controller").WithValues(
 		"request", req.NamespacedName,
 		"controller", "StorageBasedRemediationConfig",
 	)
@@ -1115,12 +1115,12 @@ func (r *StorageBasedRemediationConfigReconciler) Reconcile(ctx context.Context,
 	}
 
 	// Ensure SBD device exists in shared storage
-	action, err = r.ensureSBDDevice(ctx, &sbdConfig, logger)
+	action, err = r.ensureSBRDevice(ctx, &sbdConfig, logger)
 	if err != nil {
 		logger.Error(err, "Waiting for SBD device to be initialized",
 			"namespace", sbdConfig.Namespace,
 			"operation", "sbd-device-init")
-		r.emitEventf(&sbdConfig, EventTypeWarning, ReasonSBDDeviceInitError, err.Error())
+		r.emitEventf(&sbdConfig, EventTypeWarning, ReasonSBRDeviceInitError, err.Error())
 
 		return ctrl.Result{RequeueAfter: InitialStorageBasedRemediationConfigRetryDelay}, err
 	} else if action != controllerutil.OperationResultNone {
@@ -1286,10 +1286,10 @@ func (r *StorageBasedRemediationConfigReconciler) ensureServiceAccount(
 		serviceAccount.Labels["app"] = "sbd-agent"
 		serviceAccount.Labels["app.kubernetes.io/name"] = "sbd-agent"
 		serviceAccount.Labels["app.kubernetes.io/component"] = "agent"
-		serviceAccount.Labels["app.kubernetes.io/part-of"] = SBDOperatorName
-		serviceAccount.Labels["app.kubernetes.io/managed-by"] = SBDOperatorName
+		serviceAccount.Labels["app.kubernetes.io/part-of"] = SBROperatorName
+		serviceAccount.Labels["app.kubernetes.io/managed-by"] = SBROperatorName
 		serviceAccount.Annotations["sbd-operator/shared-resource"] = "true"
-		serviceAccount.Annotations["sbd-operator/managed-by"] = SBDOperatorName
+		serviceAccount.Annotations["sbd-operator/managed-by"] = SBROperatorName
 
 		return nil
 	})
@@ -1507,7 +1507,7 @@ func (r *StorageBasedRemediationConfigReconciler) buildDaemonSet(sbdConfig *medi
 									},
 								},
 							},
-							Args:         r.buildSBDAgentArgs(sbdConfig),
+							Args:         r.buildSBRAgentArgs(sbdConfig),
 							VolumeMounts: r.buildVolumeMounts(sbdConfig),
 							LivenessProbe: &corev1.Probe{
 								ProbeHandler: corev1.ProbeHandler{
@@ -1557,8 +1557,8 @@ func (r *StorageBasedRemediationConfigReconciler) buildDaemonSet(sbdConfig *medi
 	}
 }
 
-// buildSBDAgentArgs builds the command line arguments for the sbd-agent container
-func (r *StorageBasedRemediationConfigReconciler) buildSBDAgentArgs(sbdConfig *medik8sv1alpha1.StorageBasedRemediationConfig) []string {
+// buildSBRAgentArgs builds the command line arguments for the sbd-agent container
+func (r *StorageBasedRemediationConfigReconciler) buildSBRAgentArgs(sbdConfig *medik8sv1alpha1.StorageBasedRemediationConfig) []string {
 	// Get configured watchdog timeout and calculate pet interval
 	watchdogTimeout := sbdConfig.Spec.GetWatchdogTimeout()
 	petInterval := sbdConfig.Spec.GetPetInterval()
@@ -1835,7 +1835,7 @@ func (r *StorageBasedRemediationConfigReconciler) SetupWithManager(mgr ctrl.Mana
 		Owns(&appsv1.DaemonSet{}).
 		Owns(&corev1.PersistentVolumeClaim{}).
 		Owns(&batchv1.Job{}).
-		Named("sbdconfig").
+		Named("sbrconfig").
 		Complete(r)
 
 	//	WithEventFilter(r.filterEvents()).

@@ -2224,14 +2224,14 @@ func (s *SBDAgent) getScheme() *runtime.Scheme {
 // addSBDRemediationController adds the StorageBasedRemediation controller to the controller manager
 func (s *SBDAgent) addSBDRemediationController() error {
 	// Create StorageBasedRemediation reconciler
-	reconciler := &controller.SBDRemediationReconciler{
+	reconciler := &controller.SBRRemediationReconciler{
 		Client:   s.controllerManager.GetClient(),
 		Scheme:   s.controllerManager.GetScheme(),
 		Recorder: s.controllerManager.GetEventRecorderFor("sbd-agent-remediation"),
 	}
 
 	// Set up the reconciler with agent resources
-	reconciler.SetSBDDevices(s.heartbeatDevice, s.fenceDevice)
+	reconciler.SetSBRDevices(s.heartbeatDevice, s.fenceDevice)
 
 	reconciler.SetNodeManager(s.nodeManager)
 	reconciler.SetOwnNodeInfo(s.nodeID, s.nodeName)
