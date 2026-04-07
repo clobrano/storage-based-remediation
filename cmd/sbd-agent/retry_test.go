@@ -23,8 +23,8 @@ import (
 	"github.com/medik8s/storage-based-remediation/pkg/sbdprotocol"
 )
 
-func TestSBDAgent_FailureTracking(t *testing.T) {
-	agent, _, _, cleanup := createTestSBDAgent(t, 8081)
+func TestSBRAgent_FailureTracking(t *testing.T) {
+	agent, _, _, cleanup := createTestSBRAgent(t, 8081)
 	defer cleanup()
 
 	// Test initial failure counts
@@ -71,8 +71,8 @@ func TestSBDAgent_FailureTracking(t *testing.T) {
 	}
 }
 
-func TestSBDAgent_SelfFenceThreshold(t *testing.T) {
-	agent, _, _, cleanup := createTestSBDAgent(t, 8081)
+func TestSBRAgent_SelfFenceThreshold(t *testing.T) {
+	agent, _, _, cleanup := createTestSBRAgent(t, 8081)
 	defer cleanup()
 
 	// Test that self-fence is not triggered initially
@@ -118,8 +118,8 @@ func TestSBDAgent_SelfFenceThreshold(t *testing.T) {
 	}
 }
 
-func TestSBDAgent_FailureCountReset(t *testing.T) {
-	agent, _, _, cleanup := createTestSBDAgent(t, 8081)
+func TestSBRAgent_FailureCountReset(t *testing.T) {
+	agent, _, _, cleanup := createTestSBRAgent(t, 8081)
 	defer cleanup()
 
 	// Increment some failure counts
@@ -150,8 +150,8 @@ func TestSBDAgent_FailureCountReset(t *testing.T) {
 	}
 }
 
-func TestSBDAgent_RetryConfiguration(t *testing.T) {
-	agent, _, _, cleanup := createTestSBDAgent(t, 8081)
+func TestSBRAgent_RetryConfiguration(t *testing.T) {
+	agent, _, _, cleanup := createTestSBRAgent(t, 8081)
 	defer cleanup()
 
 	// Verify retry configuration is properly initialized
@@ -173,8 +173,8 @@ func TestSBDAgent_RetryConfiguration(t *testing.T) {
 	// since logr.Logger is always a valid struct
 }
 
-func TestSBDAgent_WatchdogRetryMechanism(t *testing.T) {
-	agent, mockWatchdog, _, cleanup := createTestSBDAgent(t, 8081)
+func TestSBRAgent_WatchdogRetryMechanism(t *testing.T) {
+	agent, mockWatchdog, _, cleanup := createTestSBRAgent(t, 8081)
 	defer cleanup()
 
 	// Configure mock watchdog to fail initially
@@ -195,21 +195,21 @@ func TestSBDAgent_WatchdogRetryMechanism(t *testing.T) {
 	}
 }
 
-func TestSBDAgent_HeartbeatRetryMechanism(t *testing.T) {
-	agent, _, mockDevice, cleanup := createTestSBDAgent(t, 8081)
+func TestSBRAgent_HeartbeatRetryMechanism(t *testing.T) {
+	agent, _, mockDevice, cleanup := createTestSBRAgent(t, 8081)
 	defer cleanup()
 
 	mockDevice.SetFailWrite(true)
 
 	// Test heartbeat write failure
-	err := agent.writeHeartbeatToSBD()
+	err := agent.writeHeartbeatToSBR()
 	if err == nil {
 		t.Error("Expected heartbeat write to fail")
 	}
 
 	// Now make device succeed
 	mockDevice.SetFailWrite(false)
-	err = agent.writeHeartbeatToSBD()
+	err = agent.writeHeartbeatToSBR()
 	if err != nil {
 		t.Errorf("Expected heartbeat write to succeed, got: %v", err)
 	}

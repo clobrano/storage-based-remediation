@@ -1282,7 +1282,7 @@ func TestStorageBasedRemediationConfigSpec_GetSharedStorageMountPath(t *testing.
 		{
 			name:     "returns fixed path",
 			spec:     StorageBasedRemediationConfigSpec{},
-			expected: agent.SharedStorageSBDDeviceDirectory,
+			expected: agent.SharedStorageSBRDeviceDirectory,
 		},
 	}
 

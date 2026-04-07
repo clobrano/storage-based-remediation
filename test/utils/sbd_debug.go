@@ -25,10 +25,10 @@ limitations under the License.
 //	err := testClients.NodeMapSummary("sbd-agent-pod-name", "sbd-system", "node-mapping.txt")
 //
 //	// Print SBD device info to stdout
-//	err := testClients.SBDDeviceSummary("sbd-agent-pod-name", "sbd-system", "")
+//	err := testClients.SBRDeviceSummary("sbd-agent-pod-name", "sbd-system", "")
 //
 //	// Save SBD device info to file
-//	err := testClients.SBDDeviceSummary("sbd-agent-pod-name", "sbd-system", "sbd-device.txt")
+//	err := testClients.SBRDeviceSummary("sbd-agent-pod-name", "sbd-system", "sbd-device.txt")
 package utils
 
 import (
@@ -51,8 +51,8 @@ const (
 	notAvailableText = "N/A"
 )
 
-// SBDNodeSummary represents a summary of SBD node information for display purposes
-type SBDNodeSummary struct {
+// SBRNodeSummary represents a summary of SBD node information for display purposes
+type SBRNodeSummary struct {
 	NodeID    uint16
 	Timestamp time.Time
 	Sequence  uint64
@@ -64,7 +64,7 @@ type SBDNodeSummary struct {
 func (tc *TestClients) GetNodeMapFromPod(podName, namespace string) (*sbdprotocol.NodeMapTable, error) {
 	// Execute command to read node mapping file
 	sbdNodeMappingPath := fmt.Sprintf("%s/%s%s",
-		agent.SharedStorageSBDDeviceDirectory, agent.SharedStorageSBDDeviceFile, agent.SharedStorageNodeMappingSuffix)
+		agent.SharedStorageSBRDeviceDirectory, agent.SharedStorageSBRDeviceFile, agent.SharedStorageNodeMappingSuffix)
 
 	cmd := []string{"cat", sbdNodeMappingPath}
 	stdout, stderr, err := tc.execInPod(podName, namespace, cmd)
@@ -75,12 +75,12 @@ func (tc *TestClients) GetNodeMapFromPod(podName, namespace string) (*sbdprotoco
 	return parseNodeMapping([]byte(stdout))
 }
 
-// GetSBDDeviceInfoFromPod extracts SBD device information from an SBD agent pod
-func (tc *TestClients) GetSBDDeviceInfoFromPod(podName, namespace string) ([]SBDNodeSummary, error) {
+// GetSBRDeviceInfoFromPod extracts SBD device information from an SBD agent pod
+func (tc *TestClients) GetSBRDeviceInfoFromPod(podName, namespace string) ([]SBRNodeSummary, error) {
 	// Execute command to read SBD device content
 	// Read first 255 slots (255 * 512 bytes = 130560 bytes)
 
-	sbdDevicePath := fmt.Sprintf("%s/%s", agent.SharedStorageSBDDeviceDirectory, agent.SharedStorageSBDDeviceFile)
+	sbdDevicePath := fmt.Sprintf("%s/%s", agent.SharedStorageSBRDeviceDirectory, agent.SharedStorageSBRDeviceFile)
 
 	cmd := []string{"dd", "if=" + sbdDevicePath, "bs=512", "count=255", "status=none"}
 	stdout, stderr, err := tc.execInPod(podName, namespace, cmd)
@@ -88,7 +88,7 @@ func (tc *TestClients) GetSBDDeviceInfoFromPod(podName, namespace string) ([]SBD
 		return nil, fmt.Errorf("failed to read SBD device from pod %s: %v, stderr: %s", podName, err, stderr)
 	}
 
-	slots, err := parseSBDDevice([]byte(stdout))
+	slots, err := parseSBRDevice([]byte(stdout))
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse SBD device: %w", err)
 	}
@@ -97,12 +97,12 @@ func (tc *TestClients) GetSBDDeviceInfoFromPod(podName, namespace string) ([]SBD
 }
 
 // GetFenceDeviceInfoFromPod extracts fence device information from an SBD agent pod
-func (tc *TestClients) GetFenceDeviceInfoFromPod(podName, namespace string) ([]SBDNodeSummary, error) {
+func (tc *TestClients) GetFenceDeviceInfoFromPod(podName, namespace string) ([]SBRNodeSummary, error) {
 	// Execute command to read fence device content
 	// Read first 255 slots (255 * 512 bytes = 130560 bytes)
 
 	fenceDevicePath := fmt.Sprintf("%s/%s%s",
-		agent.SharedStorageSBDDeviceDirectory, agent.SharedStorageSBDDeviceFile, agent.SharedStorageFenceDeviceSuffix)
+		agent.SharedStorageSBRDeviceDirectory, agent.SharedStorageSBRDeviceFile, agent.SharedStorageFenceDeviceSuffix)
 
 	cmd := []string{"dd", "if=" + fenceDevicePath, "bs=512", "count=255", "status=none"}
 	stdout, stderr, err := tc.execInPod(podName, namespace, cmd)
@@ -110,7 +110,7 @@ func (tc *TestClients) GetFenceDeviceInfoFromPod(podName, namespace string) ([]S
 		return nil, fmt.Errorf("failed to read fence device from pod %s: %v, stderr: %s", podName, err, stderr)
 	}
 
-	slots, err := parseSBDDevice([]byte(stdout))
+	slots, err := parseSBRDevice([]byte(stdout))
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse fence device: %w", err)
 	}
@@ -145,8 +145,8 @@ func PrintNodeMap(nodeMapTable *sbdprotocol.NodeMapTable) {
 	ginkgo.GinkgoWriter.Printf("\n")
 }
 
-// PrintSBDDevice prints the SBD device summary to stdout
-func PrintSBDDevice(slots []SBDNodeSummary) {
+// PrintSBRDevice prints the SBD device summary to stdout
+func PrintSBRDevice(slots []SBRNodeSummary) {
 	ginkgo.GinkgoWriter.Printf("\n=== SBD Device Summary ===\n")
 	ginkgo.GinkgoWriter.Printf("Total slots with data: %d\n\n", len(slots))
 
@@ -170,7 +170,7 @@ func PrintSBDDevice(slots []SBDNodeSummary) {
 }
 
 // PrintFenceDevice prints the fence device summary to stdout
-func PrintFenceDevice(slots []SBDNodeSummary) {
+func PrintFenceDevice(slots []SBRNodeSummary) {
 	ginkgo.GinkgoWriter.Printf("\n=== Fence Device Summary ===\n")
 	ginkgo.GinkgoWriter.Printf("Total slots with data: %d\n\n", len(slots))
 
@@ -231,7 +231,7 @@ func SaveNodeMapToFile(nodeMapTable *sbdprotocol.NodeMapTable, filename string) 
 }
 
 // saveDeviceToFileGeneric is a generic helper function for saving device summaries to file
-func saveDeviceToFileGeneric(slots []SBDNodeSummary, filename, deviceType, noSlotsMessage string) error {
+func saveDeviceToFileGeneric(slots []SBRNodeSummary, filename, deviceType, noSlotsMessage string) error {
 	file, err := os.Create(filename)
 	if err != nil {
 		return fmt.Errorf("failed to create file %s: %w", filename, err)
@@ -264,13 +264,13 @@ func saveDeviceToFileGeneric(slots []SBDNodeSummary, filename, deviceType, noSlo
 	return nil
 }
 
-// SaveSBDDeviceToFile saves SBD device slots to a file for debugging
-func SaveSBDDeviceToFile(slots []SBDNodeSummary, filename string) error {
+// SaveSBRDeviceToFile saves SBD device slots to a file for debugging
+func SaveSBRDeviceToFile(slots []SBRNodeSummary, filename string) error {
 	return saveDeviceToFileGeneric(slots, filename, "SBD Device", "No active SBD slots found.")
 }
 
 // SaveFenceDeviceToFile saves the fence device summary to a file
-func SaveFenceDeviceToFile(slots []SBDNodeSummary, filename string) error {
+func SaveFenceDeviceToFile(slots []SBRNodeSummary, filename string) error {
 	return saveDeviceToFileGeneric(slots, filename, "Fence Device", "No active fence slots found.")
 }
 
@@ -293,20 +293,20 @@ func (tc *TestClients) NodeMapSummary(podName, namespace, outputFile string) err
 	return nil
 }
 
-// SBDDeviceSummary gets SBD device info from a pod and either prints or saves it
-func (tc *TestClients) SBDDeviceSummary(podName, namespace, outputFile string) error {
-	slots, err := tc.GetSBDDeviceInfoFromPod(podName, namespace)
+// SBRDeviceSummary gets SBD device info from a pod and either prints or saves it
+func (tc *TestClients) SBRDeviceSummary(podName, namespace, outputFile string) error {
+	slots, err := tc.GetSBRDeviceInfoFromPod(podName, namespace)
 	if err != nil {
 		return err
 	}
 
 	if outputFile != "" {
-		if err := SaveSBDDeviceToFile(slots, outputFile); err != nil {
+		if err := SaveSBRDeviceToFile(slots, outputFile); err != nil {
 			return fmt.Errorf("failed to save SBD device info to file: %w", err)
 		}
 		ginkgo.GinkgoWriter.Printf("SBD device summary saved to: %s\n", outputFile)
 	} else {
-		PrintSBDDevice(slots)
+		PrintSBRDevice(slots)
 	}
 
 	return nil
@@ -496,12 +496,12 @@ func parseNodeMapping(data []byte) (*sbdprotocol.NodeMapTable, error) {
 	return nodeMapTable, nil
 }
 
-// parseSBDDevice parses binary SBD device data
-func parseSBDDevice(data []byte) ([]SBDNodeSummary, error) {
+// parseSBRDevice parses binary SBD device data
+func parseSBRDevice(data []byte) ([]SBRNodeSummary, error) {
 	const slotSize = sbdprotocol.SBD_SLOT_SIZE
 	magic := sbdprotocol.SBD_MAGIC
 
-	var slots []SBDNodeSummary
+	var slots []SBRNodeSummary
 
 	for i := 0; i < len(data)/slotSize; i++ {
 		start := i * slotSize
@@ -514,7 +514,7 @@ func parseSBDDevice(data []byte) ([]SBDNodeSummary, error) {
 
 		// Check if slot has SBD message magic
 		if len(slotData) >= 8 && string(slotData[:8]) == magic {
-			slot, err := parseSBDSlot(uint16(i), slotData)
+			slot, err := parseSBRSlot(uint16(i), slotData)
 			if err == nil && slot.HasData {
 				slots = append(slots, slot)
 			} else {
@@ -527,22 +527,22 @@ func parseSBDDevice(data []byte) ([]SBDNodeSummary, error) {
 	return slots, nil
 }
 
-// parseSBDSlot parses a single SBD slot
-func parseSBDSlot(nodeID uint16, data []byte) (SBDNodeSummary, error) {
+// parseSBRSlot parses a single SBD slot
+func parseSBRSlot(nodeID uint16, data []byte) (SBRNodeSummary, error) {
 	if len(data) < sbdprotocol.SBD_HEADER_SIZE {
-		return SBDNodeSummary{}, fmt.Errorf("slot data too short")
+		return SBRNodeSummary{}, fmt.Errorf("slot data too short")
 	}
 
 	// Parse SBD header (simplified)
 	magic := string(data[:8])
 	if magic != sbdprotocol.SBD_MAGIC {
-		return SBDNodeSummary{NodeID: nodeID, HasData: false}, nil
+		return SBRNodeSummary{NodeID: nodeID, HasData: false}, nil
 	}
 
 	// Read basic header fields (skip version since it's not used)
 	msgType := data[10]
 	if nodeID != binary.LittleEndian.Uint16(data[11:13]) {
-		return SBDNodeSummary{}, fmt.Errorf("nodeID mismatch: %d != %d", nodeID, binary.LittleEndian.Uint16(data[11:13]))
+		return SBRNodeSummary{}, fmt.Errorf("nodeID mismatch: %d != %d", nodeID, binary.LittleEndian.Uint16(data[11:13]))
 	}
 
 	timestamp := binary.LittleEndian.Uint64(data[13:21])
@@ -554,7 +554,7 @@ func parseSBDSlot(nodeID uint16, data []byte) (SBDNodeSummary, error) {
 	// Convert timestamp from nanoseconds to time.Time
 	ts := time.Unix(int64(timestamp)/1000000000, 0)
 
-	return SBDNodeSummary{
+	return SBRNodeSummary{
 		NodeID:    nodeID,
 		Timestamp: ts,
 		Sequence:  sequence,

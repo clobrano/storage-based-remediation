@@ -1211,15 +1211,15 @@ func (dsc *DaemonSetChecker) CheckDaemonSetArgs(ds *appsv1.DaemonSet, expectedAr
 	return nil
 }
 
-// SBDAgentValidator provides comprehensive validation for SBD agent deployments
-type SBDAgentValidator struct {
+// SBRAgentValidator provides comprehensive validation for SBD agent deployments
+type SBRAgentValidator struct {
 	TestNS  *TestNamespace
 	Clients *TestClients
 }
 
-// NewSBDAgentValidator creates a new SBD agent validator
-func (tn *TestNamespace) NewSBDAgentValidator() *SBDAgentValidator {
-	return &SBDAgentValidator{
+// NewSBRAgentValidator creates a new SBD agent validator
+func (tn *TestNamespace) NewSBRAgentValidator() *SBRAgentValidator {
+	return &SBRAgentValidator{
 		TestNS:  tn,
 		Clients: tn.Clients,
 	}
@@ -1253,7 +1253,7 @@ func DefaultValidateAgentDeploymentOptions(sbdConfigName string) ValidateAgentDe
 }
 
 // ValidateAgentDeployment performs comprehensive validation of SBD agent deployment
-func (sav *SBDAgentValidator) ValidateAgentDeployment(opts ValidateAgentDeploymentOptions) error {
+func (sav *SBRAgentValidator) ValidateAgentDeployment(opts ValidateAgentDeploymentOptions) error {
 	By("waiting for SBD agent DaemonSet to be created")
 	dsChecker := sav.TestNS.NewDaemonSetChecker()
 	daemonSet, err := dsChecker.WaitForDaemonSet(map[string]string{"sbdconfig": opts.StorageBasedRemediationConfigName}, opts.DaemonSetTimeout)
@@ -1368,7 +1368,7 @@ func (sav *SBDAgentValidator) ValidateAgentDeployment(opts ValidateAgentDeployme
 }
 
 // ValidateNoNodeReboots performs focused validation to ensure SBD agents don't cause node reboots
-func (sav *SBDAgentValidator) ValidateNoNodeReboots(opts ValidateAgentDeploymentOptions) error {
+func (sav *SBRAgentValidator) ValidateNoNodeReboots(opts ValidateAgentDeploymentOptions) error {
 	By("capturing initial node state before SBD agent deployment")
 	nodeChecker := sav.Clients.NewNodeStabilityChecker()
 	err := nodeChecker.captureInitialNodeState()
@@ -1681,7 +1681,7 @@ func DescribeEnvironment(testClients *TestClients, testNamespace *TestNamespace)
 			}
 
 			By("Extracting the heartbeat device file contents from the agent pod")
-			err = testClients.SBDDeviceSummary(agentPodName, testNamespace.Name,
+			err = testClients.SBRDeviceSummary(agentPodName, testNamespace.Name,
 				fmt.Sprintf("%s/heartbeat-device.txt", testNamespace.ArtifactsDir))
 			if err != nil {
 				GinkgoWriter.Printf("Failed to get SBD device summary: %s\n", err)

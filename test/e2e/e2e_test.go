@@ -149,7 +149,7 @@ var _ = Describe("SBD Operator", Ordered, Label("e2e"), func() {
 		})
 
 		It("should handle SBD agent crash and recovery", func() {
-			testSBDAgentCrash(clusterInfo)
+			testSBRAgentCrash(clusterInfo)
 		})
 
 		It("should handle non-fencing failures gracefully", func() {
@@ -296,7 +296,7 @@ func testBasicStorageBasedRemediationConfiguration() {
 	})
 	Expect(err).NotTo(HaveOccurred(), "StorageBasedRemediationConfig creation failed")
 
-	validator := testNamespace.NewSBDAgentValidator()
+	validator := testNamespace.NewSBRAgentValidator()
 	opts := utils.DefaultValidateAgentDeploymentOptions(sbdConfig.Name)
 	opts.ExpectedArgs = []string{
 		"--watchdog-path=/dev/watchdog",
@@ -1103,7 +1103,7 @@ func testSBDInspection() {
 
 	// Try to inspect SBD device if available
 	By("Attempting to inspect SBD device")
-	err = testNamespace.Clients.SBDDeviceSummary(podName, testNamespace.Name, "")
+	err = testNamespace.Clients.SBRDeviceSummary(podName, testNamespace.Name, "")
 	Expect(err).NotTo(HaveOccurred(), "Failed to retrieve SBD device info")
 
 	// Try to inspect fence device if available
@@ -1117,7 +1117,7 @@ func testSBDInspection() {
 		fmt.Sprintf("%s/node-mapping-debug.txt", testNamespace.ArtifactsDir))
 	Expect(err).NotTo(HaveOccurred(), "Failed to save node mapping")
 
-	err = testNamespace.Clients.SBDDeviceSummary(podName, testNamespace.Name,
+	err = testNamespace.Clients.SBRDeviceSummary(podName, testNamespace.Name,
 		fmt.Sprintf("%s/sbd-device-debug.txt", testNamespace.ArtifactsDir))
 	Expect(err).NotTo(HaveOccurred(), "Failed to save SBD device info")
 
@@ -1138,13 +1138,13 @@ func testSBDInspection() {
 
 	type podDeviceSummary struct {
 		PodName string
-		Slots   []utils.SBDNodeSummary
+		Slots   []utils.SBRNodeSummary
 	}
 
 	summaries := make([]podDeviceSummary, 0, len(allPods.Items))
 
 	for _, pod := range allPods.Items {
-		slots, err := testNamespace.Clients.GetSBDDeviceInfoFromPod(pod.Name, testNamespace.Name)
+		slots, err := testNamespace.Clients.GetSBRDeviceInfoFromPod(pod.Name, testNamespace.Name)
 		GinkgoWriter.Printf("Pod %s SBD device slots:\n", pod.Name)
 		for _, slot := range slots {
 			GinkgoWriter.Printf("  - NodeID: %v, Type: %v, Sequence: %v, Timestamp: %v\n",
@@ -1197,7 +1197,7 @@ func testSBDInspection() {
 	GinkgoWriter.Printf("SBD inspection test completed\n")
 }
 
-func testSBDAgentCrash(cluster ClusterInfo) {
+func testSBRAgentCrash(cluster ClusterInfo) {
 	By("Setting up SBD configuration for agent crash test")
 	testBasicStorageBasedRemediationConfiguration()
 

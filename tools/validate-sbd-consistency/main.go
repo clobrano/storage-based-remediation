@@ -18,6 +18,7 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 
+	"github.com/medik8s/storage-based-remediation/pkg/agent"
 	"github.com/medik8s/storage-based-remediation/test/utils"
 )
 
@@ -89,7 +90,7 @@ func main() {
 
 	// Discover SBD agent pods
 	fmt.Printf("🚀 Discovering SBD agent pods...\n")
-	pods, err := getSBDAgentPods(clientset, namespace, sbdConfigName)
+	pods, err := getSBRAgentPods(clientset, namespace, sbdConfigName)
 	if err != nil {
 		log.Fatalf("Failed to get SBD agent pods: %v", err)
 	}
@@ -108,7 +109,7 @@ func main() {
 	fmt.Printf("📊 Phase 1: Initial Device File Analysis\n")
 	fmt.Printf("========================================\n")
 
-	// podName -> {sbd-device: checksum, fence-device: checksum, node-mapping: checksum}
+	// podName -> {sbr-device: checksum, fence-device: checksum, node-mapping: checksum}
 	checksums := make(map[string]map[string]string)
 
 	for _, podName := range pods {
@@ -116,10 +117,10 @@ func main() {
 		checksums[podName] = make(map[string]string)
 
 		// Get checksums for each file type
-		if checksum, err := getFileChecksum(podName, namespace, "sbd-device"); err == nil {
-			checksums[podName]["sbd-device"] = checksum
+		if checksum, err := getFileChecksum(podName, namespace, "sbr-device"); err == nil {
+			checksums[podName]["sbr-device"] = checksum
 		} else {
-			fmt.Printf("  ⚠️  Failed to get sbd-device checksum: %v\n", err)
+			fmt.Printf("  ⚠️  Failed to get sbr-device checksum: %v\n", err)
 		}
 
 		if checksum, err := getFileChecksum(podName, namespace, "fence-device"); err == nil {
@@ -152,7 +153,7 @@ func main() {
 		}
 
 		fmt.Printf("SBD Device Slots:\n")
-		if err := testClients.SBDDeviceSummary(podName, namespace, ""); err != nil {
+		if err := testClients.SBRDeviceSummary(podName, namespace, ""); err != nil {
 			fmt.Printf("Failed to get SBD device info: %v\n", err)
 		}
 
@@ -224,7 +225,7 @@ func getStorageBasedRemediationConfigs(namespace string) ([]string, error) {
 	sbdConfigGVR := schema.GroupVersionResource{
 		Group:    "storage-based-remediation.medik8s.io",
 		Version:  "v1alpha1",
-		Resource: "sbdconfigs",
+		Resource: "storagebasedremediationconfigs",
 	}
 
 	var list *unstructured.UnstructuredList
@@ -247,8 +248,8 @@ func getStorageBasedRemediationConfigs(namespace string) ([]string, error) {
 	return names, nil
 }
 
-// getSBDAgentPods discovers SBD agent pods in the given namespace
-func getSBDAgentPods(clientset *kubernetes.Clientset, namespace, sbdConfigName string) ([]string, error) {
+// getSBRAgentPods discovers SBD agent pods in the given namespace
+func getSBRAgentPods(clientset *kubernetes.Clientset, namespace, sbdConfigName string) ([]string, error) {
 	var labelSelector string
 	if sbdConfigName != "" {
 		labelSelector = fmt.Sprintf("sbdconfig=%s", sbdConfigName)
@@ -277,12 +278,12 @@ func getSBDAgentPods(clientset *kubernetes.Clientset, namespace, sbdConfigName s
 func getFileChecksum(podName, namespace, fileType string) (string, error) {
 	var filePath string
 	switch fileType {
-	case "sbd-device":
-		filePath = "/dev/sbd/sbd-device"
+	case "sbr-device":
+		filePath = fmt.Sprintf("%s/%s", agent.SharedStorageSBRDeviceDirectory, agent.SharedStorageSBRDeviceFile)
 	case "fence-device":
-		filePath = "/dev/sbd/sbd-device-fence"
+		filePath = fmt.Sprintf("%s/%s%s", agent.SharedStorageSBRDeviceDirectory, agent.SharedStorageSBRDeviceFile, agent.SharedStorageFenceDeviceSuffix)
 	case "node-mapping":
-		filePath = "/dev/sbd/sbd-device-nodemap"
+		filePath = fmt.Sprintf("%s/%s%s", agent.SharedStorageSBRDeviceDirectory, agent.SharedStorageSBRDeviceFile, agent.SharedStorageNodeMappingSuffix)
 	default:
 		return "", fmt.Errorf("unknown file type: %s", fileType)
 	}
@@ -304,7 +305,7 @@ func getFileChecksum(podName, namespace, fileType string) (string, error) {
 
 // analyzeConsistency analyzes checksum consistency across pods
 func analyzeConsistency(checksums map[string]map[string]string) {
-	fileTypes := []string{"sbd-device", "fence-device", "node-mapping"}
+	fileTypes := []string{"sbr-device", "fence-device", "node-mapping"}
 
 	for _, fileType := range fileTypes {
 		fmt.Printf("\n%s consistency:\n", fileType)
@@ -333,7 +334,7 @@ func analyzeConsistency(checksums map[string]map[string]string) {
 				fmt.Printf("    %s: %v\n", checksum, pods)
 			}
 
-			if fileType == "sbd-device" || fileType == "fence-device" {
+			if fileType == "sbr-device" || fileType == "fence-device" {
 				fmt.Printf("    💡 Note: Different checksums for %s may indicate cache coherency issues\n", fileType)
 				fmt.Printf("       Each pod may be seeing different versions of the shared file due to NFS caching\n")
 			}
@@ -351,7 +352,7 @@ func timedConsistencyCheck(pods []string, namespace string) {
 		fmt.Printf("Check %d/%d (time: %s)\n", i+1, iterations, time.Now().Format("15:04:05"))
 
 		for _, podName := range pods {
-			checksum, err := getFileChecksum(podName, namespace, "sbd-device")
+			checksum, err := getFileChecksum(podName, namespace, "sbr-device")
 			if err != nil {
 				fmt.Printf("  %s: ERROR - %v\n", podName, err)
 			} else {

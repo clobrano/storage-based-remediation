@@ -252,11 +252,11 @@ var _ = Describe("StorageBasedRemediationConfig Controller", func() {
 
 			By("verifying the sbd-device flag is set correctly")
 			expectedSBDDevice := fmt.Sprintf("--%s=%s/%s",
-				agent.FlagSBDDevice, agent.SharedStorageSBDDeviceDirectory, agent.SharedStorageSBDDeviceFile)
+				agent.FlagSBRDevice, agent.SharedStorageSBRDeviceDirectory, agent.SharedStorageSBRDeviceFile)
 			Expect(args).To(ContainElement(expectedSBDDevice))
 
 			By("verifying file locking is enabled for shared storage")
-			expectedFileLocking := fmt.Sprintf("--%s=true", agent.FlagSBDFileLocking)
+			expectedFileLocking := fmt.Sprintf("--%s=true", agent.FlagSBRFileLocking)
 			Expect(args).To(ContainElement(expectedFileLocking))
 		})
 

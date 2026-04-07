@@ -42,7 +42,7 @@ type TestAgentOptions struct {
 	HeartbeatInterval  time.Duration
 	PeerCheckInterval  time.Duration
 	WatchdogTimeout    time.Duration
-	SBDTimeoutSeconds  int
+	SBRTimeoutSeconds  int
 	RebootMethod       string
 	SyncInterval       time.Duration
 	K8sClient          rtclient.Client
@@ -59,7 +59,7 @@ func DefaultTestAgentOptions() TestAgentOptions {
 		HeartbeatInterval:  1 * time.Second,
 		PeerCheckInterval:  1 * time.Second,
 		WatchdogTimeout:    1 * time.Second,
-		SBDTimeoutSeconds:  30,
+		SBRTimeoutSeconds:  30,
 		RebootMethod:       "panic",
 		SyncInterval:       2 * time.Second,
 		Logger:             logr.Discard(),

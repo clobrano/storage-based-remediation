@@ -55,8 +55,8 @@ const (
 	// SBRAgentOOSTaintTimestampAnnotation records when OOS taint was placed on the node for this remediation
 	SBRAgentOOSTaintTimestampAnnotation = "medik8s.io/sbr-oos-placed-at"
 
-	// Fresh window and requeue delay for SBD agent remediations before placing OOS taint
-	SBRAgentRemediationFreshAge     = 15 * time.Second * (5 + 2) //TODO mshitrit should work around dependecies to update the calculation to be: main.SBDDefaultTimeoutSec/2 * (main.MaxConsecutiveFailures+2)  if SBD_TIMEOUT_SECONDS defined, use instead of main.SBDDefaultTimeoutSec
+	// Fresh window and requeue delay for SBR agent remediations before placing OOS taint
+	SBRAgentRemediationFreshAge     = 15 * time.Second * (5 + 2) //TODO mshitrit should work around dependecies to update the calculation to be: main.SBRDefaultTimeoutSec/2 * (main.MaxConsecutiveFailures+2)  if SBR_TIMEOUT_SECONDS defined, use instead of main.SBRDefaultTimeoutSec
 	SBRAgentRemediationRequeueDelay = 10 * time.Second
 
 	// Status update retry configuration
@@ -119,7 +119,7 @@ type SBRRemediationReconciler struct {
 // +kubebuilder:rbac:groups="",resources=events,verbs=create;patch
 // +kubebuilder:rbac:groups=coordination.k8s.io,resources=leases,verbs=get;list;watch;create;update;patch;delete
 
-// setSBDDevices allows setting custom SBD devices (useful for testing)
+// SetSBRDevices allows setting custom SBR devices (useful for testing)
 func (s *SBRRemediationReconciler) SetSBRDevices(heartbeatDevice, fenceDevice mocks.BlockDeviceInterface) {
 	s.sbdDevice = heartbeatDevice
 	s.fenceDevice = fenceDevice

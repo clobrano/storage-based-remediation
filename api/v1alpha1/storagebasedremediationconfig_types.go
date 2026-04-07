@@ -393,7 +393,7 @@ func (s *StorageBasedRemediationConfigSpec) GetSharedStorageAccessModes() []stri
 // GetSharedStorageMountPath returns the shared storage mount path
 // The controller automatically chooses a sensible path for mounting shared storage
 func (s *StorageBasedRemediationConfigSpec) GetSharedStorageMountPath() string {
-	return agent.SharedStorageSBDDeviceDirectory
+	return agent.SharedStorageSBRDeviceDirectory
 }
 
 // HasSharedStorage returns true if shared storage is configured
