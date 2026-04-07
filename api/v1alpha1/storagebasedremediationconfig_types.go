@@ -100,7 +100,7 @@ const (
 type SBRConfigConditionType string
 
 const (
-	// SBRConfigConditionDaemonSetReady indicates whether the SBD agent DaemonSet is ready
+	// SBRConfigConditionDaemonSetReady indicates whether the SBR agent DaemonSet is ready
 	SBRConfigConditionDaemonSetReady SBRConfigConditionType = "DaemonSetReady"
 	// SBRConfigConditionSharedStorageReady indicates whether shared storage is properly configured
 	SBRConfigConditionSharedStorageReady SBRConfigConditionType = "SharedStorageReady"
@@ -119,12 +119,12 @@ type StorageBasedRemediationConfigSpec struct {
 	// +optional
 	WatchdogPath string `json:"watchdogPath,omitempty"`
 
-	// Image is the container image for the SBD agent DaemonSet
-	// If not specified, defaults to sbd-agent from the same registry/org/tag as the operator
+	// Image is the container image for the SBR agent DaemonSet
+	// If not specified, defaults to sbr-agent from the same registry/org/tag as the operator
 	// +optional
 	Image string `json:"image,omitempty"`
 
-	// ImagePullPolicy defines the pull policy for the SBD agent container image.
+	// ImagePullPolicy defines the pull policy for the SBR agent container image.
 	// Valid values are Always, Never, and IfNotPresent.
 	// Defaults to IfNotPresent for production stability.
 	// +kubebuilder:validation:Enum=Always;Never;IfNotPresent
@@ -139,15 +139,15 @@ type StorageBasedRemediationConfigSpec struct {
 	// +optional
 	SharedStorageClass string `json:"sharedStorageClass,omitempty"`
 
-	// NodeSelector is a selector which must be true for the SBD agent pod to fit on a node.
-	// This allows users to control which nodes the SBD agent runs on by specifying node labels.
+	// NodeSelector is a selector which must be true for the SBR agent pod to fit on a node.
+	// This allows users to control which nodes the SBR agent runs on by specifying node labels.
 	// If not specified, defaults to worker nodes only (node-role.kubernetes.io/worker: "").
 	// The selector is merged with the default requirement for kubernetes.io/os=linux.
 	// +optional
 	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
 
 	// StaleNodeTimeout defines how long to wait before considering a node stale and removing it from slot mapping
-	// This timeout determines when inactive nodes are cleaned up from the shared SBD device slot assignments.
+	// This timeout determines when inactive nodes are cleaned up from the shared SBR device slot assignments.
 	// Nodes that haven't updated their heartbeat within this duration will be considered stale and their slots
 	// will be freed for reuse by new nodes. The value must be at least 1 minute.
 	// +kubebuilder:validation:Type=string
@@ -176,7 +176,7 @@ type StorageBasedRemediationConfigSpec struct {
 	// +optional
 	PetIntervalMultiple *int32 `json:"petIntervalMultiple,omitempty"`
 
-	// LogLevel defines the logging level for the SBD agent pods.
+	// LogLevel defines the logging level for the SBR agent pods.
 	// Valid values are debug, info, warn, and error.
 	// Debug provides the most verbose logging, while error only logs error messages.
 	// +kubebuilder:validation:Enum=debug;info;warn;error
@@ -184,8 +184,8 @@ type StorageBasedRemediationConfigSpec struct {
 	// +optional
 	LogLevel string `json:"logLevel,omitempty"`
 
-	// IOTimeout defines the timeout for SBD I/O operations.
-	// This determines how long the system will wait for SBD I/O operations to complete.
+	// IOTimeout defines the timeout for SBR I/O operations.
+	// This determines how long the system will wait for SBR I/O operations to complete.
 	// The value must be between 100 milliseconds and 5 minutes.
 	// +kubebuilder:validation:Type=string
 	// +kubebuilder:validation:Pattern="^([0-9]+(\\.[0-9]+)?(ms|s|m|h))+$"
@@ -224,7 +224,7 @@ type StorageBasedRemediationConfigSpec struct {
 	// +optional
 	SBRUpdateInterval *metav1.Duration `json:"sbrUpdateInterval,omitempty"`
 
-	// PeerCheckInterval defines the interval for checking peer node heartbeats in the SBD device.
+	// PeerCheckInterval defines the interval for checking peer node heartbeats in the SBR device.
 	// This determines how frequently each node reads and processes heartbeats from other nodes.
 	// More frequent checks provide faster peer failure detection but increase I/O load on the shared storage.
 	// The value must be between 1 second and 60 seconds.
@@ -259,7 +259,7 @@ func (s *StorageBasedRemediationConfigSpec) GetWatchdogPath() string {
 }
 
 // GetImageWithOperatorImage returns the agent image with default fallback
-// The default is constructed from the operator's image by replacing the image name with sbd-agent
+// The default is constructed from the operator's image by replacing the image name with sbr-agent
 func (s *StorageBasedRemediationConfigSpec) GetImageWithOperatorImage(operatorImage string) (string, error) {
 	if s.Image != "" {
 		return s.Image, nil
@@ -321,7 +321,7 @@ func (s *StorageBasedRemediationConfigSpec) GetLogLevel() string {
 	return "warn"
 }
 
-// GetIOTimeout returns the SBD I/O timeout with default fallback
+// GetIOTimeout returns the SBR I/O timeout with default fallback
 func (s *StorageBasedRemediationConfigSpec) GetIOTimeout() time.Duration {
 	if s.IOTimeout != nil {
 		return s.IOTimeout.Duration
@@ -484,7 +484,7 @@ func (s *StorageBasedRemediationConfigSpec) ValidatePetIntervalTiming() error {
 	return nil
 }
 
-// ValidateIOTimeout validates the SBD I/O timeout value
+// ValidateIOTimeout validates the SBR I/O timeout value
 func (s *StorageBasedRemediationConfigSpec) ValidateIOTimeout() error {
 	timeout := s.GetIOTimeout()
 
@@ -650,7 +650,7 @@ func (s *StorageBasedRemediationConfigSpec) ValidateAll() error {
 	return nil
 }
 
-// deriveAgentImageFromOperator derives the sbd-agent image from the operator image
+// deriveAgentImageFromOperator derives the sbr-agent image from the operator image
 func deriveAgentImageFromOperator(operatorImage string) (string, error) {
 	// Handle empty operator image
 	if operatorImage == "" {
@@ -676,7 +676,7 @@ func deriveAgentImageFromOperator(operatorImage string) (string, error) {
 	}
 
 	// If already an agent image (e.g. controller fallback in tests), return as-is
-	if suffix == "sbd-agent" || strings.HasPrefix(suffix, "sbd-agent:") {
+	if suffix == "sbr-agent" || strings.HasPrefix(suffix, "sbr-agent:") {
 		agentSuffix := suffix
 		if !strings.Contains(agentSuffix, ":") {
 			agentSuffix += ":latest"
@@ -686,12 +686,12 @@ func deriveAgentImageFromOperator(operatorImage string) (string, error) {
 
 	// Replace operator with agent in the image name. Two naming schemes are supported:
 	// 1) storage-based-remediation-*-operator -> storage-based-remediation-agent-* (then strip "-operator")
-	// 2) sbd-operator -> sbd-agent
+	// 2) sbr-operator -> sbr-agent
 	agentSuffix := strings.Replace(suffix, "storage-based-remediation", "storage-based-remediation-agent", 1)
 	if agentSuffix != suffix {
 		agentSuffix = strings.Replace(agentSuffix, "-operator", "", 1)
 	} else {
-		agentSuffix = strings.Replace(suffix, "sbd-operator", "sbd-agent", 1)
+		agentSuffix = strings.Replace(suffix, "sbr-operator", "sbr-agent", 1)
 	}
 	if agentSuffix == suffix {
 		return "", fmt.Errorf("invalid operator image %q", operatorImage)
@@ -717,10 +717,10 @@ type StorageBasedRemediationConfigStatus struct {
 	// +listMapKey=type
 	Conditions []metav1.Condition `json:"conditions,omitempty" patchStrategy:"merge" patchMergeKey:"type"`
 
-	// ReadyNodes is the number of nodes where the SBD agent is ready
+	// ReadyNodes is the number of nodes where the SBR agent is ready
 	ReadyNodes int32 `json:"readyNodes,omitempty"`
 
-	// TotalNodes is the total number of nodes where the SBD agent should be deployed
+	// TotalNodes is the total number of nodes where the SBR agent should be deployed
 	TotalNodes int32 `json:"totalNodes,omitempty"`
 }
 

@@ -54,7 +54,7 @@ func TestE2E(t *testing.T) {
 	}
 
 	RegisterFailHandler(Fail)
-	GinkgoWriter.Print("Starting sbd-operator e2e test suite\n")
+	GinkgoWriter.Print("Starting sbr-operator e2e test suite\n")
 	RunSpecs(t, "e2e suite")
 }
 
@@ -69,7 +69,7 @@ var _ = BeforeSuite(func() {
 	}
 
 	var err error
-	testNamespace, err = utils.SuiteSetup("sbd-test-e2e")
+	testNamespace, err = utils.SuiteSetup("sbr-test-e2e")
 	Expect(err).NotTo(HaveOccurred(), "Failed to setup test clients")
 
 	testClients = testNamespace.Clients

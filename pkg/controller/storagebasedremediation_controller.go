@@ -50,7 +50,7 @@ const (
 	ReasonFailed = "RemediationFailed"
 	// ReasonAgentDelegated indicates the remediation was delegated to agents
 	ReasonAgentDelegated = "RemediationAgentDelegated"
-	// SBRAgentAnnotationKey marks a remediation created by sbd
+	// SBRAgentAnnotationKey marks a remediation created by sbr
 	SBRAgentAnnotationKey = "medik8s.io/sbr-agent"
 	// SBRAgentOOSTaintTimestampAnnotation records when OOS taint was placed on the node for this remediation
 	SBRAgentOOSTaintTimestampAnnotation = "medik8s.io/sbr-oos-placed-at"
@@ -94,7 +94,7 @@ var nodeUnschedulableTaint = corev1.Taint{
 }
 
 // SBRRemediationReconciler reconciles a StorageBasedRemediation object
-// This controller performs actual SBD fencing operations by writing fence messages to the SBD device.
+// This controller performs actual SBR fencing operations by writing fence messages to the SBR device.
 type SBRRemediationReconciler struct {
 	client.Client
 	Scheme   *runtime.Scheme
@@ -104,7 +104,7 @@ type SBRRemediationReconciler struct {
 	statusRetryConfig retry.Config
 	apiRetryConfig    retry.Config
 
-	// SBD device for fencing operations
+	// SBR device for fencing operations
 	sbrDevice   mocks.BlockDeviceInterface
 	fenceDevice mocks.BlockDeviceInterface
 	nodeManager *sbdprotocol.NodeManager
@@ -171,7 +171,7 @@ func (r *SBRRemediationReconciler) initializeRetryConfigs(logger logr.Logger) {
 // The StorageBasedRemediation controller performs actual fencing operations:
 // 1. Validates the remediation request
 // 2. Resolves target node name to node ID
-// 3. Writes fence message to SBD device
+// 3. Writes fence message to SBR device
 // 4. Updates status based on fencing results
 func (r *SBRRemediationReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	logger := logf.FromContext(ctx).WithName("sbrremediation-controller").WithValues(
@@ -213,10 +213,10 @@ func (r *SBRRemediationReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 
 	// Add resource-specific context to logger
 	logger = logger.WithValues(
-		"sbdremediation.name", sbrRemediation.Name,
-		"sbdremediation.namespace", sbrRemediation.Namespace,
-		"sbdremediation.generation", sbrRemediation.Generation,
-		"sbdremediation.resourceVersion", sbrRemediation.ResourceVersion,
+		"sbrremediation.name", sbrRemediation.Name,
+		"sbrremediation.namespace", sbrRemediation.Namespace,
+		"sbrremediation.generation", sbrRemediation.Generation,
+		"sbrremediation.resourceVersion", sbrRemediation.ResourceVersion,
 		"nodeName", nodeName,
 		"spec.timeoutSeconds", sbrRemediation.Spec.TimeoutSeconds,
 		"status.ready", sbrRemediation.IsReady(),
@@ -257,7 +257,7 @@ func (r *SBRRemediationReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	// Emit initial event for remediation initiation
 	if len(sbrRemediation.Status.Conditions) == 0 {
 		r.emitEventf(&sbrRemediation, EventTypeNormal, ReasonRemediationInitiated,
-			"SBD remediation initiated for node '%s'", nodeName)
+			"SBR remediation initiated for node '%s'", nodeName)
 	}
 
 	logger.V(1).Info("Checking if remediation is ready",
@@ -286,9 +286,9 @@ func (r *SBRRemediationReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 				"targetNode", nodeName)
 			return ctrl.Result{RequeueAfter: 10 * time.Second}, nil
 		}
-		// For fresh SBD-agent remediations, delay placing the OOS taint
+		// For fresh SBR-agent remediations, delay placing the OOS taint
 		if isSBRAgentRemediation(&sbrRemediation) && isRemediationFresh(&sbrRemediation, time.Now()) {
-			logger.V(1).Info("Fresh SBD-agent remediation detected; delaying OutOfService taint",
+			logger.V(1).Info("Fresh SBR-agent remediation detected; delaying OutOfService taint",
 				"age", time.Since(sbrRemediation.CreationTimestamp.Time),
 				"requeueAfter", SBRAgentRemediationRequeueDelay)
 			return ctrl.Result{RequeueAfter: SBRAgentRemediationRequeueDelay}, nil
@@ -301,7 +301,7 @@ func (r *SBRRemediationReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 			return ctrl.Result{}, err
 		}
 
-		// If this is an SBD-agent remediation, stamp OOS placement time only once and requeue to avoid update conflicts
+		// If this is an SBR-agent remediation, stamp OOS placement time only once and requeue to avoid update conflicts
 		if isSBRAgentRemediation(&sbrRemediation) {
 			if sbrRemediation.Annotations == nil {
 				sbrRemediation.Annotations = map[string]string{}
@@ -369,7 +369,7 @@ func (r *SBRRemediationReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	return ctrl.Result{RequeueAfter: 10 * time.Second}, nil
 }
 
-// executeFencing performs the actual fencing operation via SBD device
+// executeFencing performs the actual fencing operation via SBR device
 func (r *SBRRemediationReconciler) executeFencing(
 	remediation *medik8sv1alpha1.StorageBasedRemediation, logger logr.Logger) error {
 	targetNodeName := remediation.Name
@@ -381,7 +381,7 @@ func (r *SBRRemediationReconciler) executeFencing(
 		return err
 	}
 
-	logger.Info("Writing fence message to SBD device",
+	logger.Info("Writing fence message to SBR device",
 		"targetNode", targetNodeName,
 		"targetNodeID", targetNodeID,
 		"reason", remediation.Spec.Reason)
@@ -424,11 +424,11 @@ func (r *SBRRemediationReconciler) markNodeAsSchedulable(ctx context.Context, no
 	return nil
 }
 
-// writeFenceMessage writes a fence message to the target node's slot in the SBD device
+// writeFenceMessage writes a fence message to the target node's slot in the SBR device
 func (r *SBRRemediationReconciler) writeFenceMessage(targetNodeID uint16,
 	reason medik8sv1alpha1.SBRRemediationReason, logger logr.Logger) error {
 	if r.fenceDevice == nil || r.fenceDevice.IsClosed() {
-		return fmt.Errorf("SBD device is not available")
+		return fmt.Errorf("SBR device is not available")
 	}
 
 	// Create fence message
@@ -738,10 +738,10 @@ func (r *SBRRemediationReconciler) checkFencingCompletion(
 		// Don't fail immediately, try other methods
 	}
 
-	// Method 2: Check if target node has stopped heartbeating to SBD device
+	// Method 2: Check if target node has stopped heartbeating to SBR device
 	heartbeatStopped, err := r.hasNodeStoppedHeartbeating(targetNodeName, logger)
 	if err != nil {
-		logger.V(1).Info("Could not check SBD heartbeat", "error", err)
+		logger.V(1).Info("Could not check SBR heartbeat", "error", err)
 		// Don't fail immediately, try other methods
 	}
 
@@ -785,10 +785,10 @@ func (r *SBRRemediationReconciler) isNodeNotReady(ctx context.Context, nodeName 
 	return true, nil
 }
 
-// hasNodeStoppedHeartbeating checks if the target node has stopped sending heartbeats to SBD device
+// hasNodeStoppedHeartbeating checks if the target node has stopped sending heartbeats to SBR device
 func (r *SBRRemediationReconciler) hasNodeStoppedHeartbeating(nodeName string, logger logr.Logger) (bool, error) {
 	if r.nodeManager == nil || r.sbrDevice == nil || r.sbrDevice.IsClosed() {
-		return false, fmt.Errorf("SBD device or node manager not available")
+		return false, fmt.Errorf("SBR device or node manager not available")
 	}
 
 	// Get target node ID
@@ -803,7 +803,7 @@ func (r *SBRRemediationReconciler) hasNodeStoppedHeartbeating(nodeName string, l
 
 	n, err := r.sbrDevice.ReadAt(slotData, slotOffset)
 	if err != nil {
-		return false, fmt.Errorf("failed to read SBD slot %d: %w", targetNodeID, err)
+		return false, fmt.Errorf("failed to read SBR slot %d: %w", targetNodeID, err)
 	}
 
 	if n < sbdprotocol.SBD_HEADER_SIZE {
@@ -815,7 +815,7 @@ func (r *SBRRemediationReconciler) hasNodeStoppedHeartbeating(nodeName string, l
 		slotData[:sbdprotocol.SBD_HEADER_SIZE],
 	)
 	if err != nil {
-		logger.V(1).Info("Could not parse SBD header, assuming node stopped", "error", err)
+		logger.V(1).Info("Could not parse SBR header, assuming node stopped", "error", err)
 		return true, nil
 	}
 
@@ -824,7 +824,7 @@ func (r *SBRRemediationReconciler) hasNodeStoppedHeartbeating(nodeName string, l
 	switch header.Type {
 	case sbdprotocol.SBD_MSG_TYPE_HEARTBEAT:
 		logger.Info(
-			"Checking SBD header",
+			"Checking SBR header",
 			"type", "heartbeat",
 			"age", messageAge,
 			"timestamp", messageTimestamp,
@@ -833,7 +833,7 @@ func (r *SBRRemediationReconciler) hasNodeStoppedHeartbeating(nodeName string, l
 		)
 	case sbdprotocol.SBD_MSG_TYPE_FENCE:
 		logger.Info(
-			"Checking SBD header",
+			"Checking SBR header",
 			"type", "fence",
 			"age", messageAge,
 			"timestamp", messageTimestamp,
@@ -842,7 +842,7 @@ func (r *SBRRemediationReconciler) hasNodeStoppedHeartbeating(nodeName string, l
 		)
 	default:
 		logger.Info(
-			"Checking SBD header",
+			"Checking SBR header",
 			"type", header.Type,
 			"age", messageAge,
 			"timestamp", messageTimestamp,

@@ -83,7 +83,7 @@ func parseFlags() *Config {
 	config := &Config{}
 
 	// ODF Configuration
-	flag.StringVar(&config.StorageClassName, "storage-class-name", "sbd-cephfs", "CephFS StorageClass name for SBD")
+	flag.StringVar(&config.StorageClassName, "storage-class-name", "sbr-cephfs", "CephFS StorageClass name for SBR")
 	flag.StringVar(&config.ClusterName, "cluster-name", "ocs-storagecluster", "ODF StorageCluster name")
 	flag.StringVar(&config.Namespace, "namespace", "openshift-storage", "Namespace for ODF installation")
 
@@ -102,7 +102,7 @@ func parseFlags() *Config {
 	flag.StringVar(&config.AWSKMSKeyID, "aws-kms-key", "", "AWS KMS key ID for encryption")
 
 	// Cache Coherency Configuration
-	flag.BoolVar(&config.AggressiveCoherency, "aggressive-coherency", false, "Enable aggressive cache coherency for strict SBD coordination")
+	flag.BoolVar(&config.AggressiveCoherency, "aggressive-coherency", false, "Enable aggressive cache coherency for strict SBR coordination")
 
 	// Behavior flags
 	flag.BoolVar(&config.DryRun, "dry-run", false, "Show what would be done without executing")
@@ -149,15 +149,15 @@ func showUsage() {
 	fmt.Printf(`
 Usage: %s [OPTIONS]
 
-This tool sets up OpenShift Data Foundation (ODF) with CephFS storage optimized for SBD.
+This tool sets up OpenShift Data Foundation (ODF) with CephFS storage optimized for SBR.
 It provides ReadWriteMany (RWX) storage with POSIX file locking required for reliable 
-SBD cluster coordination and automatic node remediation.
+SBR cluster coordination and automatic node remediation.
 
 DESCRIPTION:
 This tool deploys OpenShift Data Foundation and creates a CephFS StorageClass with 
-SBD-optimized mount options. CephFS provides distributed file storage with full POSIX 
+SBR-optimized mount options. CephFS provides distributed file storage with full POSIX 
 locking support, enabling proper inter-node heartbeat coordination and preventing 
-split-brain scenarios in SBD clusters.
+split-brain scenarios in SBR clusters.
 
 AWS INTEGRATION:
 For AWS clusters, the tool automatically:
@@ -173,20 +173,20 @@ OPENSHIFT DATA FOUNDATION COMPONENTS:
 • CSI Driver: Kubernetes CSI integration for dynamic provisioning
 • Storage Classes: Pre-configured classes for different storage types
 
-CACHE COHERENCY FOR SBD:
+CACHE COHERENCY FOR SBR:
 • CephFS provides native cache coherency across all clients
-• POSIX file locking: Full distributed locking support for SBD coordination
+• POSIX file locking: Full distributed locking support for SBR coordination
 • Real-time consistency: Changes are immediately visible across all nodes
 • No NFS cache issues: Direct file system semantics
 
 AGGRESSIVE CACHE COHERENCY:
-For strict SBD coordination use --aggressive-coherency flag which configures:
+For strict SBR coordination use --aggressive-coherency flag which configures:
 • cache=strict: Disable client-side caching for real-time updates
 • recover_session=clean: Clean session recovery for reliability
 • sync: Force synchronous operations
 • _netdev: Ensure network availability before mounting
 
-Use this mode when SBD requires the strictest cache coherency guarantees.
+Use this mode when SBR requires the strictest cache coherency guarantees.
 
 EXAMPLES:
 
@@ -225,15 +225,15 @@ If permissions are missing, the tool will display the complete required IAM poli
 
 STORAGE CLASSES CREATED:
 The tool creates optimized StorageClasses:
-• %s: CephFS with SBD cache coherency settings
-• Auto-configured mount options for reliable SBD operation
+• %s: CephFS with SBR cache coherency settings
+• Auto-configured mount options for reliable SBR operation
 • ReadWriteMany (RWX) access mode support
 • POSIX file locking enabled
 
-This ensures optimal SBD operation with proper inter-node coordination.
+This ensures optimal SBR operation with proper inter-node coordination.
 
 OPTIONS:
-`, os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], "sbd-cephfs")
+`, os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], "sbr-cephfs")
 
 	flag.PrintDefaults()
 }
@@ -268,10 +268,10 @@ func printResults(result *odf.SetupResult) {
 apiVersion: storage-based-remediation.medik8s.io/v1alpha1
 kind: StorageBasedRemediationConfig
 metadata:
-  name: sbd-with-odf
+  name: sbr-with-odf
 spec:
   sharedStorageClass: "%s"
-  sbdWatchdogPath: "/dev/watchdog"
+  watchdogPath: "/dev/watchdog"
   watchdogTimeout: "60s"
 `, result.StorageClassName)
 }

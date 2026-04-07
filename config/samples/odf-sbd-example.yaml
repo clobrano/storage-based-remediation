@@ -14,7 +14,7 @@ metadata:
     description: "SBD configuration using OpenShift Data Foundation CephFS for shared storage coordination"
 spec:
   # SBD agent image configuration
-  image: "quay.io/medik8s/sbd-agent:latest"
+  image: "quay.io/clobrano/sbd-agent:latest"
   imagePullPolicy: "IfNotPresent"
   
   # Watchdog configuration
@@ -59,7 +59,7 @@ metadata:
     description: "SBD configuration with strict cache coherency for mission-critical environments"
 spec:
   # SBD agent image configuration
-  image: "quay.io/medik8s/sbd-agent:latest"
+  image: "quay.io/clobrano/sbd-agent:latest"
   imagePullPolicy: "IfNotPresent"
   
   # Watchdog configuration with shorter timeout for faster response
@@ -92,7 +92,7 @@ metadata:
     tenant: "tenant-a"
     storage.medik8s.io/type: cephfs
 spec:
-  image: "quay.io/medik8s/sbd-agent:latest"
+  image: "quay.io/clobrano/sbd-agent:latest"
   sbdWatchdogPath: "/dev/watchdog"
   watchdogTimeout: "60s"
   sharedStorageClass: "sbd-cephfs"
@@ -118,7 +118,7 @@ metadata:
   annotations:
     description: "Development SBD configuration for testing and validation"
 spec:
-  image: "quay.io/medik8s/sbd-agent:latest"
+  image: "quay.io/clobrano/sbd-agent:latest"
   imagePullPolicy: "Always"  # Always pull for development
   
   # Shorter timeouts for faster testing cycles

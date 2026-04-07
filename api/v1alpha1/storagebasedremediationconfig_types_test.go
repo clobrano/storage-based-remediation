@@ -1122,32 +1122,32 @@ func TestGetImageWithOperatorImage(t *testing.T) {
 		{
 			name:          "explicit image specified",
 			spec:          StorageBasedRemediationConfigSpec{Image: "custom-registry.com/custom-org/custom-agent:v1.0.0"},
-			operatorImage: "quay.io/medik8s/sbd-operator:v1.2.3",
+			operatorImage: "quay.io/medik8s/sbr-operator:v1.2.3",
 			expected:      "custom-registry.com/custom-org/custom-agent:v1.0.0",
 		},
 		{
 			name:          "no image specified - derive from operator image with tag",
 			spec:          StorageBasedRemediationConfigSpec{},
-			operatorImage: "quay.io/medik8s/sbd-operator:v1.2.3",
-			expected:      "quay.io/medik8s/sbd-agent:v1.2.3",
+			operatorImage: "quay.io/medik8s/sbr-operator:v1.2.3",
+			expected:      "quay.io/medik8s/sbr-agent:v1.2.3",
 		},
 		{
 			name:          "no image specified - derive from operator image without tag",
 			spec:          StorageBasedRemediationConfigSpec{},
-			operatorImage: "quay.io/medik8s/sbd-operator",
-			expected:      "quay.io/medik8s/sbd-agent:latest",
+			operatorImage: "quay.io/medik8s/sbr-operator",
+			expected:      "quay.io/medik8s/sbr-agent:latest",
 		},
 		{
 			name:          "no image specified - simple operator image with tag",
 			spec:          StorageBasedRemediationConfigSpec{},
-			operatorImage: "sbd-operator:v1.0.0",
-			expected:      "sbd-agent:v1.0.0",
+			operatorImage: "sbr-operator:v1.0.0",
+			expected:      "sbr-agent:v1.0.0",
 		},
 		{
 			name:          "no image specified - simple operator image without tag",
 			spec:          StorageBasedRemediationConfigSpec{},
-			operatorImage: "sbd-operator",
-			expected:      "sbd-agent:latest",
+			operatorImage: "sbr-operator",
+			expected:      "sbr-agent:latest",
 		},
 		{
 			name:          "no image specified - empty operator image",
@@ -1158,8 +1158,8 @@ func TestGetImageWithOperatorImage(t *testing.T) {
 		{
 			name:          "no image specified - complex registry path",
 			spec:          StorageBasedRemediationConfigSpec{},
-			operatorImage: "registry.example.com:5000/my-org/my-project/sbd-operator:dev-123",
-			expected:      "registry.example.com:5000/my-org/my-project/sbd-agent:dev-123",
+			operatorImage: "registry.example.com:5000/my-org/my-project/sbr-operator:dev-123",
+			expected:      "registry.example.com:5000/my-org/my-project/sbr-agent:dev-123",
 		},
 		{
 			name:          "no image specified - storage-based-remediation operator image (RH naming)",
@@ -1170,8 +1170,8 @@ func TestGetImageWithOperatorImage(t *testing.T) {
 		{
 			name:          "no image specified - already agent image (e.g. controller fallback)",
 			spec:          StorageBasedRemediationConfigSpec{},
-			operatorImage: "sbd-agent:latest",
-			expected:      "sbd-agent:latest",
+			operatorImage: "sbr-agent:latest",
+			expected:      "sbr-agent:latest",
 		},
 	}
 
@@ -1213,16 +1213,16 @@ func TestStorageBasedRemediationConfigSpec_GetSharedStoragePVCName(t *testing.T)
 			spec: StorageBasedRemediationConfigSpec{
 				SharedStorageClass: "efs-sc",
 			},
-			sbrConfigName: "my-sbd-config",
-			expected:      "my-sbd-config-shared-storage",
+			sbrConfigName: "my-sbr-config",
+			expected:      "my-sbr-config-shared-storage",
 		},
 		{
 			name: "complex storage class name",
 			spec: StorageBasedRemediationConfigSpec{
 				SharedStorageClass: "nfs-client",
 			},
-			sbrConfigName: "sbd-config-with-shared-storage",
-			expected:      "sbd-config-with-shared-storage-shared-storage",
+			sbrConfigName: "sbr-config-with-shared-storage",
+			expected:      "sbr-config-with-shared-storage-shared-storage",
 		},
 	}
 

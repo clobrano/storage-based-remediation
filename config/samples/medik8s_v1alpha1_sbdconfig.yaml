@@ -35,7 +35,7 @@ spec:
   peerCheckInterval: "4s"
   
   # Container configuration
-  image: "quay.io/medik8s/sbd-agent:latest"
+  image: "quay.io/clobrano/sbd-agent:latest"
   imagePullPolicy: "IfNotPresent"
   
   # Logging
@@ -77,7 +77,7 @@ spec:
   # Production with Custom Image:
   # -----------------------------
   # spec:
-  #   image: "quay.io/medik8s/sbd-agent:latest"
+  #   image: "quay.io/clobrano/sbd-agent:latest"
   #   staleNodeTimeout: "30m"
   #
   # Multiple Configurations in Same Namespace:
@@ -87,7 +87,7 @@ spec:
   #   name: production-sbd
   #   namespace: my-app
   # spec:
-  #   image: "quay.io/medik8s/sbd-agent:latest"
+  #   image: "quay.io/clobrano/sbd-agent:latest"
   #   imagePullPolicy: "IfNotPresent"
   # ---
   # # Canary config  
@@ -95,7 +95,7 @@ spec:
   #   name: canary-sbd
   #   namespace: my-app
   # spec:
-  #   image: "quay.io/medik8s/sbd-agent:latest"
+  #   image: "quay.io/clobrano/sbd-agent:latest"
   #   imagePullPolicy: "Always"
   #   nodeSelector:
   #     canary: "true"

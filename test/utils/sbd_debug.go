@@ -14,21 +14,21 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// Package utils provides debugging utilities for SBD node mapping and device inspection
+// Package utils provides debugging utilities for SBR node mapping and device inspection
 //
 // Usage Examples:
 //
 //	// Print node mapping to stdout
-//	err := testClients.NodeMapSummary("sbd-agent-pod-name", "sbd-system", "")
+//	err := testClients.NodeMapSummary("sbr-agent-pod-name", "sbr-system", "")
 //
 //	// Save node mapping to file
-//	err := testClients.NodeMapSummary("sbd-agent-pod-name", "sbd-system", "node-mapping.txt")
+//	err := testClients.NodeMapSummary("sbr-agent-pod-name", "sbr-system", "node-mapping.txt")
 //
-//	// Print SBD device info to stdout
-//	err := testClients.SBRDeviceSummary("sbd-agent-pod-name", "sbd-system", "")
+//	// Print SBR device info to stdout
+//	err := testClients.SBRDeviceSummary("sbr-agent-pod-name", "sbr-system", "")
 //
-//	// Save SBD device info to file
-//	err := testClients.SBRDeviceSummary("sbd-agent-pod-name", "sbd-system", "sbd-device.txt")
+//	// Save SBR device info to file
+//	err := testClients.SBRDeviceSummary("sbr-agent-pod-name", "sbr-system", "sbr-device.txt")
 package utils
 
 import (
@@ -51,7 +51,7 @@ const (
 	notAvailableText = "N/A"
 )
 
-// SBRNodeSummary represents a summary of SBD node information for display purposes
+// SBRNodeSummary represents a summary of SBR node information for display purposes
 type SBRNodeSummary struct {
 	NodeID    uint16
 	Timestamp time.Time
@@ -60,7 +60,7 @@ type SBRNodeSummary struct {
 	HasData   bool
 }
 
-// GetNodeMapFromPod extracts the current node mapping from an SBD agent pod
+// GetNodeMapFromPod extracts the current node mapping from an SBR agent pod
 func (tc *TestClients) GetNodeMapFromPod(podName, namespace string) (*sbdprotocol.NodeMapTable, error) {
 	// Execute command to read node mapping file
 	sbrNodeMappingPath := fmt.Sprintf("%s/%s%s",
@@ -75,9 +75,9 @@ func (tc *TestClients) GetNodeMapFromPod(podName, namespace string) (*sbdprotoco
 	return parseNodeMapping([]byte(stdout))
 }
 
-// GetSBRDeviceInfoFromPod extracts SBD device information from an SBD agent pod
+// GetSBRDeviceInfoFromPod extracts SBR device information from an SBR agent pod
 func (tc *TestClients) GetSBRDeviceInfoFromPod(podName, namespace string) ([]SBRNodeSummary, error) {
-	// Execute command to read SBD device content
+	// Execute command to read SBR device content
 	// Read first 255 slots (255 * 512 bytes = 130560 bytes)
 
 	sbrDevicePath := fmt.Sprintf("%s/%s", agent.SharedStorageSBRDeviceDirectory, agent.SharedStorageSBRDeviceFile)
@@ -85,18 +85,18 @@ func (tc *TestClients) GetSBRDeviceInfoFromPod(podName, namespace string) ([]SBR
 	cmd := []string{"dd", "if=" + sbrDevicePath, "bs=512", "count=255", "status=none"}
 	stdout, stderr, err := tc.execInPod(podName, namespace, cmd)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read SBD device from pod %s: %v, stderr: %s", podName, err, stderr)
+		return nil, fmt.Errorf("failed to read SBR device from pod %s: %v, stderr: %s", podName, err, stderr)
 	}
 
 	slots, err := parseSBRDevice([]byte(stdout))
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse SBD device: %w", err)
+		return nil, fmt.Errorf("failed to parse SBR device: %w", err)
 	}
 
 	return slots, nil
 }
 
-// GetFenceDeviceInfoFromPod extracts fence device information from an SBD agent pod
+// GetFenceDeviceInfoFromPod extracts fence device information from an SBR agent pod
 func (tc *TestClients) GetFenceDeviceInfoFromPod(podName, namespace string) ([]SBRNodeSummary, error) {
 	// Execute command to read fence device content
 	// Read first 255 slots (255 * 512 bytes = 130560 bytes)
@@ -145,13 +145,13 @@ func PrintNodeMap(nodeMapTable *sbdprotocol.NodeMapTable) {
 	ginkgo.GinkgoWriter.Printf("\n")
 }
 
-// PrintSBRDevice prints the SBD device summary to stdout
+// PrintSBRDevice prints the SBR device summary to stdout
 func PrintSBRDevice(slots []SBRNodeSummary) {
-	ginkgo.GinkgoWriter.Printf("\n=== SBD Device Summary ===\n")
+	ginkgo.GinkgoWriter.Printf("\n=== SBR Device Summary ===\n")
 	ginkgo.GinkgoWriter.Printf("Total slots with data: %d\n\n", len(slots))
 
 	if len(slots) == 0 {
-		ginkgo.GinkgoWriter.Printf("No active SBD slots found.\n")
+		ginkgo.GinkgoWriter.Printf("No active SBR slots found.\n")
 		return
 	}
 
@@ -264,9 +264,9 @@ func saveDeviceToFileGeneric(slots []SBRNodeSummary, filename, deviceType, noSlo
 	return nil
 }
 
-// SaveSBRDeviceToFile saves SBD device slots to a file for debugging
+// SaveSBRDeviceToFile saves SBR device slots to a file for debugging
 func SaveSBRDeviceToFile(slots []SBRNodeSummary, filename string) error {
-	return saveDeviceToFileGeneric(slots, filename, "SBD Device", "No active SBD slots found.")
+	return saveDeviceToFileGeneric(slots, filename, "SBR Device", "No active SBR slots found.")
 }
 
 // SaveFenceDeviceToFile saves the fence device summary to a file
@@ -293,7 +293,7 @@ func (tc *TestClients) NodeMapSummary(podName, namespace, outputFile string) err
 	return nil
 }
 
-// SBRDeviceSummary gets SBD device info from a pod and either prints or saves it
+// SBRDeviceSummary gets SBR device info from a pod and either prints or saves it
 func (tc *TestClients) SBRDeviceSummary(podName, namespace, outputFile string) error {
 	slots, err := tc.GetSBRDeviceInfoFromPod(podName, namespace)
 	if err != nil {
@@ -302,9 +302,9 @@ func (tc *TestClients) SBRDeviceSummary(podName, namespace, outputFile string) e
 
 	if outputFile != "" {
 		if err := SaveSBRDeviceToFile(slots, outputFile); err != nil {
-			return fmt.Errorf("failed to save SBD device info to file: %w", err)
+			return fmt.Errorf("failed to save SBR device info to file: %w", err)
 		}
-		ginkgo.GinkgoWriter.Printf("SBD device summary saved to: %s\n", outputFile)
+		ginkgo.GinkgoWriter.Printf("SBR device summary saved to: %s\n", outputFile)
 	} else {
 		PrintSBRDevice(slots)
 	}
@@ -331,9 +331,9 @@ func (tc *TestClients) FenceDeviceSummary(podName, namespace, outputFile string)
 	return nil
 }
 
-// ValidateStorageConfiguration validates that storage is properly configured for SBD
+// ValidateStorageConfiguration validates that storage is properly configured for SBR
 func (tc *TestClients) ValidateStorageConfiguration(podName, namespace string) error {
-	ginkgo.GinkgoWriter.Printf("=== Validating Storage Configuration for SBD ===\n")
+	ginkgo.GinkgoWriter.Printf("=== Validating Storage Configuration for SBR ===\n")
 
 	// Check mount information
 	ginkgo.GinkgoWriter.Printf("--- NFS Mount Information ---\n")
@@ -363,9 +363,9 @@ func (tc *TestClients) ValidateStorageConfiguration(podName, namespace string) e
 	return nil
 }
 
-// getMountInfo retrieves mount information for the SBD storage path
+// getMountInfo retrieves mount information for the SBR storage path
 func (tc *TestClients) getMountInfo(podName, namespace string) (string, error) {
-	cmd := []string{"sh", "-c", "mount | grep /dev/sbd"}
+	cmd := []string{"sh", "-c", "mount | grep /dev/sbr"}
 	stdout, stderr, err := tc.execInPod(podName, namespace, cmd)
 	if err != nil {
 		return "", fmt.Errorf("failed to get mount info: %v, stderr: %s", err, stderr)
@@ -388,7 +388,7 @@ func validateNFSMountOptions(mountInfo string) error {
 	}
 
 	if len(missing) > 0 {
-		return fmt.Errorf("❌ Missing required NFS mount options: %v. These are required for SBD cache coherency", missing)
+		return fmt.Errorf("❌ Missing required NFS mount options: %v. These are required for SBR cache coherency", missing)
 	}
 
 	ginkgo.GinkgoWriter.Printf("✅ Required mount options present: %v\n", requiredOptions)
@@ -412,7 +412,7 @@ func validateNFSMountOptions(mountInfo string) error {
 
 // testFileLocking tests that file locking is working correctly across the shared storage
 func (tc *TestClients) testFileLocking(podName, namespace string) error {
-	testFile := "/dev/sbd/test-lock-file"
+	testFile := "/dev/sbr/test-lock-file"
 
 	// Create a test file with flock
 	cmd := []string{"sh", "-c", fmt.Sprintf("echo 'test' > %s && flock -x %s sleep 1", testFile, testFile)}
@@ -431,7 +431,7 @@ func (tc *TestClients) testFileLocking(podName, namespace string) error {
 
 // testCacheCoherency tests that cache coherency is working by checking file modification visibility
 func (tc *TestClients) testCacheCoherency(podName, namespace string) error {
-	testFile := "/dev/sbd/test-cache-coherency"
+	testFile := "/dev/sbr/test-cache-coherency"
 	testContent := fmt.Sprintf("cache-test-%d", time.Now().Unix())
 
 	// Write test content
@@ -496,7 +496,7 @@ func parseNodeMapping(data []byte) (*sbdprotocol.NodeMapTable, error) {
 	return nodeMapTable, nil
 }
 
-// parseSBRDevice parses binary SBD device data
+// parseSBRDevice parses binary SBR device data
 func parseSBRDevice(data []byte) ([]SBRNodeSummary, error) {
 	const slotSize = sbdprotocol.SBD_SLOT_SIZE
 	magic := sbdprotocol.SBD_MAGIC
@@ -512,14 +512,14 @@ func parseSBRDevice(data []byte) ([]SBRNodeSummary, error) {
 
 		slotData := data[start:end]
 
-		// Check if slot has SBD message magic
+		// Check if slot has SBR message magic
 		if len(slotData) >= 8 && string(slotData[:8]) == magic {
 			slot, err := parseSBRSlot(uint16(i), slotData)
 			if err == nil && slot.HasData {
 				slots = append(slots, slot)
 			} else {
-				ginkgo.GinkgoWriter.Printf("Failed to parse SBD slot: %v\n", err)
-				return nil, fmt.Errorf("failed to parse SBD slot: %w", err)
+				ginkgo.GinkgoWriter.Printf("Failed to parse SBR slot: %v\n", err)
+				return nil, fmt.Errorf("failed to parse SBR slot: %w", err)
 			}
 		}
 	}
@@ -527,13 +527,13 @@ func parseSBRDevice(data []byte) ([]SBRNodeSummary, error) {
 	return slots, nil
 }
 
-// parseSBRSlot parses a single SBD slot
+// parseSBRSlot parses a single SBR slot
 func parseSBRSlot(nodeID uint16, data []byte) (SBRNodeSummary, error) {
 	if len(data) < sbdprotocol.SBD_HEADER_SIZE {
 		return SBRNodeSummary{}, fmt.Errorf("slot data too short")
 	}
 
-	// Parse SBD header (simplified)
+	// Parse SBR header (simplified)
 	magic := string(data[:8])
 	if magic != sbdprotocol.SBD_MAGIC {
 		return SBRNodeSummary{NodeID: nodeID, HasData: false}, nil

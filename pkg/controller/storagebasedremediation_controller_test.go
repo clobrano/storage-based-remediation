@@ -40,7 +40,7 @@ import (
 )
 
 // Note: Controller tests simplified since agent-based fencing architecture
-// moved device access and fencing logic to the SBD agents
+// moved device access and fencing logic to the SBR agents
 
 var _ = Describe("StorageBasedRemediation Controller", func() {
 	Context("When reconciling a StorageBasedRemediation resource", func() {
@@ -72,8 +72,8 @@ var _ = Describe("StorageBasedRemediation Controller", func() {
 				FileLockingEnabled: true,
 			}
 
-			mockHeartbeatDevice := mocks.NewMockBlockDevice("/tmp/test-sbd", 1024*1024)
-			mockFenceDevice := mocks.NewMockBlockDevice("/tmp/test-sbd-fence", 1024*1024)
+			mockHeartbeatDevice := mocks.NewMockBlockDevice("/tmp/test-sbr", 1024*1024)
+			mockFenceDevice := mocks.NewMockBlockDevice("/tmp/test-sbr-fence", 1024*1024)
 			reconciler.SetSBRDevices(mockHeartbeatDevice, mockFenceDevice)
 
 			nodeManager, err := sbdprotocol.NewNodeManager(mockHeartbeatDevice, config)
@@ -346,7 +346,7 @@ var _ = Describe("StorageBasedRemediation Controller", func() {
 		})
 
 		Context("handleFencingFailure", func() {
-			var fenceErr = errors.New("sbd fencing failed")
+			var fenceErr = errors.New("sbr fencing failed")
 
 			When("status update succeeds", func() {
 				It("should persist fencing failure conditions in one status update", func() {

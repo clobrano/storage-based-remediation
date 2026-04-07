@@ -78,10 +78,10 @@ type StorageBasedRemediationStatus struct {
 	// LastUpdateTime is the time when this status was last updated
 	LastUpdateTime *metav1.Time `json:"lastUpdateTime,omitempty"`
 
-	// NodeID is the numeric ID assigned to the target node for SBD operations
+	// NodeID is the numeric ID assigned to the target node for SBR operations
 	NodeID *uint16 `json:"nodeID,omitempty"`
 
-	// FenceMessageWritten indicates if the fence message was successfully written to the SBD device
+	// FenceMessageWritten indicates if the fence message was successfully written to the SBR device
 	FenceMessageWritten bool `json:"fenceMessageWritten,omitempty"`
 
 	// OperatorInstance identifies which operator instance is handling this remediation

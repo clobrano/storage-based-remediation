@@ -77,8 +77,8 @@ const (
 	StorageBasedRemediationConfigFinalizerName = "sbr-operator.medik8s.io/cleanup"
 
 	// Default image constants
-	DefaultSBRAgentImage = "sbd-agent:latest"
-	SBROperatorName      = "sbd-operator"
+	DefaultSBRAgentImage = "sbr-agent:latest"
+	SBROperatorName      = "sbr-operator"
 
 	// Retry configuration constants for StorageBasedRemediationConfig controller
 	// MaxStorageBasedRemediationConfigRetries is the maximum number of retry attempts for StorageBasedRemediationConfig operations
@@ -186,11 +186,11 @@ func (r *StorageBasedRemediationConfigReconciler) emitEventf(
 // It uses environment variables (POD_NAME, POD_NAMESPACE) to find the current pod
 // and extracts the image from the pod spec
 func (r *StorageBasedRemediationConfigReconciler) getOperatorImage(ctx context.Context, logger logr.Logger) string {
-	// In CI, RELATED_IMAGE_SBD_AGENT is injected via `oc set env` after bundle installation,
+	// In CI, RELATED_IMAGE_SBR_AGENT is injected via `oc set env` after bundle installation,
 	// pointing to the CI-built agent image. In non-CI runs this env var is not set,
 	// so we fall through to pod image discovery and derivation.
-	if img := os.Getenv("RELATED_IMAGE_SBD_AGENT"); img != "" {
-		logger.Info("Using RELATED_IMAGE_SBD_AGENT for agent image", "image", img)
+	if img := os.Getenv("RELATED_IMAGE_SBR_AGENT"); img != "" {
+		logger.Info("Using RELATED_IMAGE_SBR_AGENT for agent image", "image", img)
 		return img
 	}
 
@@ -260,8 +260,8 @@ func (r *StorageBasedRemediationConfigReconciler) isRunningOnOpenShift(logger lo
 }
 
 // ensureSCCPermissions ensures that the service account can use the required SCC on OpenShift.
-// We use the built-in "privileged" SCC (Option A / SNR-style): sbd-agent gets "use" via the
-// ClusterRole sbd-operator-sbd-agent-privileged-scc and a ClusterRoleBinding created in ensureServiceAccount.
+// We use the built-in "privileged" SCC (Option A / SNR-style): sbr-agent gets "use" via the
+// ClusterRole sbr-operator-sbr-agent-privileged-scc and a ClusterRoleBinding created in ensureServiceAccount.
 // No custom SCC is required; this function is a no-op on OpenShift.
 func (r *StorageBasedRemediationConfigReconciler) ensureSCCPermissions(
 	ctx context.Context,
@@ -274,7 +274,7 @@ func (r *StorageBasedRemediationConfigReconciler) ensureSCCPermissions(
 		return controllerutil.OperationResultNone, nil
 	}
 	// Option A: use built-in privileged SCC; permission is granted by ClusterRoleBinding in ensureServiceAccount.
-	logger.V(1).Info("OpenShift detected; sbd-agent uses built-in privileged SCC via ClusterRoleBinding")
+	logger.V(1).Info("OpenShift detected; sbr-agent uses built-in privileged SCC via ClusterRoleBinding")
 	return controllerutil.OperationResultNone, nil
 }
 
@@ -304,11 +304,11 @@ func (r *StorageBasedRemediationConfigReconciler) validateStorageClass(
 	if r.isRWXCompatibleProvisioner(provisioner) {
 		logger.Info("StorageClass validation passed", "provisioner", provisioner)
 
-		// For NFS-based storage, validate mount options for SBD cache coherency
+		// For NFS-based storage, validate mount options for SBR cache coherency
 		if r.isNFSBasedProvisioner(provisioner) {
 			if err := r.validateNFSMountOptions(storageClass, logger); err != nil {
 				logger.Info("StorageClass mount options validation failed", "error", err)
-				return fmt.Errorf("StorageClass '%s' mount options are not configured for SBD cache coherency: %w",
+				return fmt.Errorf("StorageClass '%s' mount options are not configured for SBR cache coherency: %w",
 					storageClassName, err)
 			}
 			logger.Info("StorageClass mount options validation passed")
@@ -321,14 +321,14 @@ func (r *StorageBasedRemediationConfigReconciler) validateStorageClass(
 	if r.isRWXIncompatibleProvisioner(provisioner) {
 		return fmt.Errorf(
 			"StorageClass '%s' uses provisioner '%s' that does not support "+
-				"ReadWriteMany access mode required for SBD shared storage",
+				"ReadWriteMany access mode required for SBR shared storage",
 			storageClassName, provisioner)
 	}
 
 	// For unknown provisioners, test with a temporary PVC
 	logger.Info("StorageClass uses unknown provisioner, testing ReadWriteMany support", "provisioner", provisioner)
 	if err := r.testRWXSupport(ctx, sbrConfig, storageClassName, logger); err != nil {
-		return fmt.Errorf("StorageClass '%s' does not support ReadWriteMany access mode required for SBD shared storage: %w",
+		return fmt.Errorf("StorageClass '%s' does not support ReadWriteMany access mode required for SBR shared storage: %w",
 			storageClassName, err)
 	}
 
@@ -417,16 +417,16 @@ func (r *StorageBasedRemediationConfigReconciler) isNFSBasedProvisioner(provisio
 	return nfsProvisioners[provisioner]
 }
 
-// validateNFSMountOptions validates that NFS mount options include cache coherency settings for SBD
+// validateNFSMountOptions validates that NFS mount options include cache coherency settings for SBR
 func (r *StorageBasedRemediationConfigReconciler) validateNFSMountOptions(storageClass *storagev1.StorageClass, logger logr.Logger) error {
 	if storageClass != nil {
-		logger.Info("Skipping NFS mount options validation - TODO: Until we find some storage that actually works with SBD")
+		logger.Info("Skipping NFS mount options validation - TODO: Until we find some storage that actually works with SBR")
 		return nil
 	}
 	mountOptions := storageClass.MountOptions
 	logger = logger.WithValues("mountOptions", mountOptions)
 
-	// Required mount options for SBD cache coherency
+	// Required mount options for SBR cache coherency
 	requiredOptions := []string{"cache=none", "sync"}
 	recommendedOptions := []string{"local_lock=none"}
 
@@ -446,9 +446,9 @@ func (r *StorageBasedRemediationConfigReconciler) validateNFSMountOptions(storag
 	}
 
 	if len(missingRequired) > 0 {
-		return fmt.Errorf("missing required NFS mount options for SBD cache coherency: %v. "+
+		return fmt.Errorf("missing required NFS mount options for SBR cache coherency: %v. "+
 			"These options are required to prevent NFS client-side caching issues "+
-			"that can cause SBD heartbeat coordination failures",
+			"that can cause SBR heartbeat coordination failures",
 			missingRequired)
 	}
 
@@ -468,7 +468,7 @@ func (r *StorageBasedRemediationConfigReconciler) validateNFSMountOptions(storag
 	}
 
 	if len(missingRecommended) > 0 {
-		logger.Info("StorageClass is missing recommended NFS mount options for optimal SBD operation",
+		logger.Info("StorageClass is missing recommended NFS mount options for optimal SBR operation",
 			"missingOptions", missingRecommended)
 	}
 
@@ -487,9 +487,9 @@ func (r *StorageBasedRemediationConfigReconciler) testRWXSupport(
 			Name:      testPVCName,
 			Namespace: sbrConfig.Namespace,
 			Labels: map[string]string{
-				"app.kubernetes.io/name":      "sbd-operator",
+				"app.kubernetes.io/name":      "sbr-operator",
 				"app.kubernetes.io/component": "storage-validation",
-				"sbdconfig":                   sbrConfig.Name,
+				"sbrconfig":                   sbrConfig.Name,
 				"temp-test":                   "true",
 			},
 		},
@@ -591,10 +591,10 @@ func (r *StorageBasedRemediationConfigReconciler) ensurePVC(
 			Name:      pvcName,
 			Namespace: sbrConfig.Namespace,
 			Labels: map[string]string{
-				"app.kubernetes.io/name":       "sbd-operator",
+				"app.kubernetes.io/name":       "sbr-operator",
 				"app.kubernetes.io/component":  "shared-storage",
-				"app.kubernetes.io/managed-by": "sbd-operator",
-				"sbdconfig":                    sbrConfig.Name,
+				"app.kubernetes.io/managed-by": "sbr-operator",
+				"sbrconfig":                    sbrConfig.Name,
 			},
 		},
 		Spec: corev1.PersistentVolumeClaimSpec{
@@ -665,7 +665,7 @@ func (r *StorageBasedRemediationConfigReconciler) ensurePVC(
 	return result, nil
 }
 
-// ensureSBRDevice ensures that the SBD device file exists in shared storage when SharedStorageClass is specified
+// ensureSBRDevice ensures that the SBR device file exists in shared storage when SharedStorageClass is specified
 func (r *StorageBasedRemediationConfigReconciler) ensureSBRDevice(
 	ctx context.Context,
 	sbrConfig *medik8sv1alpha1.StorageBasedRemediationConfig,
@@ -679,7 +679,7 @@ func (r *StorageBasedRemediationConfigReconciler) ensureSBRDevice(
 	}
 
 	pvcName := sbrConfig.Spec.GetSharedStoragePVCName(sbrConfig.Name)
-	jobName := fmt.Sprintf("%s-sbd-device-init", sbrConfig.Name)
+	jobName := fmt.Sprintf("%s-sbr-device-init", sbrConfig.Name)
 
 	logger = logger.WithValues(
 		"job.name", jobName,
@@ -687,46 +687,46 @@ func (r *StorageBasedRemediationConfigReconciler) ensureSBRDevice(
 		"pvc.name", pvcName,
 	)
 
-	// Define the desired Job for SBD device initialization
+	// Define the desired Job for SBR device initialization
 	desiredJob := &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      jobName,
 			Namespace: sbrConfig.Namespace,
 			Labels: map[string]string{
-				"app.kubernetes.io/name":       "sbd-operator",
-				"app.kubernetes.io/component":  "sbd-device-init",
-				"app.kubernetes.io/managed-by": "sbd-operator",
-				"sbdconfig":                    sbrConfig.Name,
+				"app.kubernetes.io/name":       "sbr-operator",
+				"app.kubernetes.io/component":  "sbr-device-init",
+				"app.kubernetes.io/managed-by": "sbr-operator",
+				"sbrconfig":                    sbrConfig.Name,
 			},
 		},
 		Spec: batchv1.JobSpec{
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: map[string]string{
-						"app.kubernetes.io/name":       "sbd-operator",
-						"app.kubernetes.io/component":  "sbd-device-init",
-						"app.kubernetes.io/managed-by": "sbd-operator",
-						"sbdconfig":                    sbrConfig.Name,
+						"app.kubernetes.io/name":       "sbr-operator",
+						"app.kubernetes.io/component":  "sbr-device-init",
+						"app.kubernetes.io/managed-by": "sbr-operator",
+						"sbrconfig":                    sbrConfig.Name,
 					},
 				},
 				Spec: corev1.PodSpec{
 					RestartPolicy: corev1.RestartPolicyNever,
 					Containers: []corev1.Container{
 						{
-							Name:    "sbd-device-init",
+							Name:    "sbr-device-init",
 							Image:   "registry.access.redhat.com/ubi8/ubi-minimal:latest",
 							Command: []string{"sh", "-c"},
 							Args: []string{
 								fmt.Sprintf(`
 set -e
-SBD_DEVICE_SIZE_KB=1024
-SBD_DEVICE_PREFIX="%s"
-HEARTBEAT_DEVICE_PATH="$SBD_DEVICE_PREFIX/%s"
+SBR_DEVICE_SIZE_KB=1024
+SBR_DEVICE_PREFIX="%s"
+HEARTBEAT_DEVICE_PATH="$SBR_DEVICE_PREFIX/%s"
 FENCE_DEVICE_PATH="$HEARTBEAT_DEVICE_PATH%s"
 NODE_MAP_FILE="$HEARTBEAT_DEVICE_PATH%s"
 CLUSTER_NAME="${CLUSTER_NAME:-default-cluster}"
 
-echo "Initializing SBD devices: heartbeat at $HEARTBEAT_DEVICE_PATH, fence at $FENCE_DEVICE_PATH"
+echo "Initializing SBR devices: heartbeat at $HEARTBEAT_DEVICE_PATH, fence at $FENCE_DEVICE_PATH"
 echo "Using shared node mapping file: $NODE_MAP_FILE"
 
 # Function to create initial node mapping file
@@ -761,21 +761,21 @@ create_initial_node_mapping() {
     echo "Created initial node mapping file: $node_map_file ($(wc -c < "$node_map_file") bytes)"
 }
 
-# Function to create SBD device file
-create_sbd_device() {
+# Function to create SBR device file
+create_sbr_device() {
     local device_path="$1"
     local device_type="$2"
     
-    echo "Creating $device_type SBD device at $device_path"
+    echo "Creating $device_type SBR device at $device_path"
     
-    # Create the SBD device file with specific size (1MB = 1024KB)
+    # Create the SBR device file with specific size (1MB = 1024KB)
     # This provides space for multiple node slots and metadata
-    dd if=/dev/zero of="$device_path" bs=1024 count=$SBD_DEVICE_SIZE_KB
+    dd if=/dev/zero of="$device_path" bs=1024 count=$SBR_DEVICE_SIZE_KB
     
-    # Set appropriate permissions for the SBD device
+    # Set appropriate permissions for the SBR device
     chmod 664 "$device_path"
     
-    echo "$device_type SBD device created successfully at $device_path"
+    echo "$device_type SBR device created successfully at $device_path"
 }
 
 # Check if both heartbeat and fence devices and the shared node mapping file exist
@@ -784,12 +784,12 @@ FENCE_EXISTS=false
 NODE_MAP_EXISTS=false
 
 if [ -f "$HEARTBEAT_DEVICE_PATH" ] && [ -s "$HEARTBEAT_DEVICE_PATH" ]; then
-    echo "Heartbeat SBD device already exists and is non-empty"
+    echo "Heartbeat SBR device already exists and is non-empty"
     HEARTBEAT_EXISTS=true
 fi
 
 if [ -f "$FENCE_DEVICE_PATH" ] && [ -s "$FENCE_DEVICE_PATH" ]; then
-    echo "Fence SBD device already exists and is non-empty"
+    echo "Fence SBR device already exists and is non-empty"
     FENCE_EXISTS=true
 fi
 
@@ -799,20 +799,20 @@ if [ -f "$NODE_MAP_FILE" ] && [ -s "$NODE_MAP_FILE" ]; then
 fi
 
 if [ "$HEARTBEAT_EXISTS" = true ] && [ "$FENCE_EXISTS" = true ] && [ "$NODE_MAP_EXISTS" = true ]; then
-    echo "Both SBD devices and shared node mapping are properly initialized"
+    echo "Both SBR devices and shared node mapping are properly initialized"
     exit 0
 fi
 
 # Create heartbeat device if needed
 if [ "$HEARTBEAT_EXISTS" = false ]; then
-    echo "Creating heartbeat SBD device..."
-    create_sbd_device "$HEARTBEAT_DEVICE_PATH" "heartbeat"
+    echo "Creating heartbeat SBR device..."
+    create_sbr_device "$HEARTBEAT_DEVICE_PATH" "heartbeat"
 fi
 
 # Create fence device if needed
 if [ "$FENCE_EXISTS" = false ]; then
-    echo "Creating fence SBD device..."
-    create_sbd_device "$FENCE_DEVICE_PATH" "fence"
+    echo "Creating fence SBR device..."
+    create_sbr_device "$FENCE_DEVICE_PATH" "fence"
 fi
 
 # Create shared node mapping file if needed
@@ -825,16 +825,16 @@ fi
 if [ -f "$HEARTBEAT_DEVICE_PATH" ] && [ -s "$HEARTBEAT_DEVICE_PATH" ] && \
    [ -f "$FENCE_DEVICE_PATH" ] && [ -s "$FENCE_DEVICE_PATH" ] && \
    [ -f "$NODE_MAP_FILE" ] && [ -s "$NODE_MAP_FILE" ]; then
-    echo "Both SBD devices and shared node mapping successfully initialized:"
+    echo "Both SBR devices and shared node mapping successfully initialized:"
     echo "  Heartbeat device: $HEARTBEAT_DEVICE_PATH ($(ls -lh "$HEARTBEAT_DEVICE_PATH" | awk '{print $5}'))"
     echo "  Fence device: $FENCE_DEVICE_PATH ($(ls -lh "$FENCE_DEVICE_PATH" | awk '{print $5}'))"
     echo "  Shared node mapping: $NODE_MAP_FILE ($(ls -lh "$NODE_MAP_FILE" | awk '{print $5}'))"
 else
-    echo "ERROR: Failed to create one or more SBD devices or the shared node mapping file"
+    echo "ERROR: Failed to create one or more SBR devices or the shared node mapping file"
     exit 1
 fi
 
-echo "SBD devices initialization completed successfully"
+echo "SBR devices initialization completed successfully"
 `,
 									agent.SharedStorageSBRDeviceDirectory,
 									agent.SharedStorageSBRDeviceFile,
@@ -886,7 +886,7 @@ echo "SBD devices initialization completed successfully"
 	if err := controllerutil.SetControllerReference(sbrConfig, desiredJob, r.Scheme); err != nil {
 		return controllerutil.OperationResultNone,
 			fmt.Errorf(
-				"failed to set controller reference on SBD device init job: %w",
+				"failed to set controller reference on SBR device init job: %w",
 				err,
 			)
 	}
@@ -897,48 +897,48 @@ echo "SBD devices initialization completed successfully"
 	if err == nil {
 		// Job exists, check if it's completed successfully
 		if existingJob.Status.Succeeded > 0 {
-			logger.V(1).Info("SBD device initialization job already completed successfully")
+			logger.V(1).Info("SBR device initialization job already completed successfully")
 			return controllerutil.OperationResultNone, nil
 		}
 
 		// If job failed, delete it so it can be recreated
 		if existingJob.Status.Failed > 0 {
-			logger.Info("SBD device initialization job failed, recreating...",
+			logger.Info("SBR device initialization job failed, recreating...",
 				"failedCount", existingJob.Status.Failed)
 			if err := r.Delete(ctx, existingJob); err != nil {
-				logger.Error(err, "Failed to delete failed SBD device init job")
-				return controllerutil.OperationResultNone, fmt.Errorf("failed to delete failed SBD device init job: %w", err)
+				logger.Error(err, "Failed to delete failed SBR device init job")
+				return controllerutil.OperationResultNone, fmt.Errorf("failed to delete failed SBR device init job: %w", err)
 			}
 			// Wait a bit for deletion to complete
 			return controllerutil.OperationResultUpdated, nil
 		}
 
 		// Job is still running - prevent DaemonSet creation until job completes
-		logger.Info("SBD device initialization job is still running, waiting for completion before creating DaemonSet",
+		logger.Info("SBR device initialization job is still running, waiting for completion before creating DaemonSet",
 			"job.name", jobName,
 			"job.active", existingJob.Status.Active,
 			"job.succeeded", existingJob.Status.Succeeded,
 			"job.failed", existingJob.Status.Failed,
 			"job.conditions", len(existingJob.Status.Conditions))
 		return controllerutil.OperationResultNone, fmt.Errorf(
-			"SBD device initialization job '%s' is still running, DaemonSet creation will be delayed until job completes",
+			"SBR device initialization job '%s' is still running, DaemonSet creation will be delayed until job completes",
 			jobName)
 	} else if !errors.IsNotFound(err) {
-		return controllerutil.OperationResultNone, fmt.Errorf("failed to get SBD device init job: %w", err)
+		return controllerutil.OperationResultNone, fmt.Errorf("failed to get SBR device init job: %w", err)
 	}
 
 	// Create the job
-	logger.Info("Creating SBD device initialization job")
+	logger.Info("Creating SBR device initialization job")
 	if err := r.Create(ctx, desiredJob); err != nil {
-		logger.Error(err, "Failed to create SBD device initialization job")
+		logger.Error(err, "Failed to create SBR device initialization job")
 		r.emitEventf(sbrConfig, EventTypeWarning, ReasonSBRDeviceInitError,
-			"Failed to create SBD device initialization job: %v", err)
-		return controllerutil.OperationResultNone, fmt.Errorf("failed to create SBD device initialization job: %w", err)
+			"Failed to create SBR device initialization job: %v", err)
+		return controllerutil.OperationResultNone, fmt.Errorf("failed to create SBR device initialization job: %w", err)
 	}
 
-	logger.Info("SBD device initialization job created successfully, waiting for completion before creating DaemonSet")
+	logger.Info("SBR device initialization job created successfully, waiting for completion before creating DaemonSet")
 	r.emitEventf(sbrConfig, EventTypeNormal, ReasonSBRDeviceInitialized,
-		"SBD device initialization job '%s' created successfully", jobName)
+		"SBR device initialization job '%s' created successfully", jobName)
 
 	return controllerutil.OperationResultCreated, nil
 }
@@ -961,7 +961,7 @@ echo "SBD devices initialization completed successfully"
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
-// For StorageBasedRemediationConfig, this implementation deploys and manages the SBD Agent DaemonSet.
+// For StorageBasedRemediationConfig, this implementation deploys and manages the SBR Agent DaemonSet.
 //
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.21.0/pkg/reconcile
@@ -1001,10 +1001,10 @@ func (r *StorageBasedRemediationConfigReconciler) Reconcile(ctx context.Context,
 
 	// Add resource-specific context to logger
 	logger = logger.WithValues(
-		"sbdconfig.name", sbrConfig.Name,
-		"sbdconfig.namespace", sbrConfig.Namespace,
-		"sbdconfig.generation", sbrConfig.Generation,
-		"sbdconfig.resourceVersion", sbrConfig.ResourceVersion,
+		"sbrconfig.name", sbrConfig.Name,
+		"sbrconfig.namespace", sbrConfig.Namespace,
+		"sbrconfig.generation", sbrConfig.Generation,
+		"sbrconfig.resourceVersion", sbrConfig.ResourceVersion,
 	)
 
 	// Handle deletion with finalizer
@@ -1057,7 +1057,7 @@ func (r *StorageBasedRemediationConfigReconciler) Reconcile(ctx context.Context,
 			"namespace", sbrConfig.Namespace,
 			"operation", "serviceaccount-creation")
 		r.emitEventf(&sbrConfig, EventTypeWarning, ReasonServiceAccountError,
-			"Failed to ensure service account 'sbd-agent' exists in namespace '%s': %v", sbrConfig.Namespace, err)
+			"Failed to ensure service account 'sbr-agent' exists in namespace '%s': %v", sbrConfig.Namespace, err)
 
 		return ctrl.Result{RequeueAfter: InitialStorageBasedRemediationConfigRetryDelay}, err
 
@@ -1073,7 +1073,7 @@ func (r *StorageBasedRemediationConfigReconciler) Reconcile(ctx context.Context,
 			"namespace", sbrConfig.Namespace,
 			"operation", "scc-permissions")
 		r.emitEventf(&sbrConfig, EventTypeWarning, ReasonSCCError,
-			"Failed to ensure SCC permissions for service account 'sbd-agent' in namespace '%s': %v", sbrConfig.Namespace, err)
+			"Failed to ensure SCC permissions for service account 'sbr-agent' in namespace '%s': %v", sbrConfig.Namespace, err)
 
 		// Return requeue with backoff for transient errors
 		return ctrl.Result{RequeueAfter: InitialStorageBasedRemediationConfigRetryDelay}, err
@@ -1114,12 +1114,12 @@ func (r *StorageBasedRemediationConfigReconciler) Reconcile(ctx context.Context,
 		return ctrl.Result{Requeue: true}, err
 	}
 
-	// Ensure SBD device exists in shared storage
+	// Ensure SBR device exists in shared storage
 	action, err = r.ensureSBRDevice(ctx, &sbrConfig, logger)
 	if err != nil {
-		logger.Error(err, "Waiting for SBD device to be initialized",
+		logger.Error(err, "Waiting for SBR device to be initialized",
 			"namespace", sbrConfig.Namespace,
-			"operation", "sbd-device-init")
+			"operation", "sbr-device-init")
 		r.emitEventf(&sbrConfig, EventTypeWarning, ReasonSBRDeviceInitError, err.Error())
 
 		return ctrl.Result{RequeueAfter: InitialStorageBasedRemediationConfigRetryDelay}, err
@@ -1145,7 +1145,7 @@ func (r *StorageBasedRemediationConfigReconciler) Reconcile(ctx context.Context,
 	daemonSetLogger.Info("Creating or updating DaemonSet",
 		"operation", "daemonset-create-or-update",
 		"desired.image", desiredDaemonSet.Spec.Template.Spec.Containers[0].Image)
-	daemonSetLogger.Info("SBD agent DaemonSet watchdog configuration",
+	daemonSetLogger.Info("SBR agent DaemonSet watchdog configuration",
 		"watchdogPath", sbrConfig.Spec.GetWatchdogPath(),
 		"watchdogTimeout", sbrConfig.Spec.GetWatchdogTimeout().String())
 
@@ -1169,7 +1169,7 @@ func (r *StorageBasedRemediationConfigReconciler) Reconcile(ctx context.Context,
 	} else if action != controllerutil.OperationResultNone {
 		// Emit event for DaemonSet management
 		r.emitEventf(&sbrConfig, EventTypeNormal, ReasonDaemonSetManaged,
-			"DaemonSet '%s' for SBD Agent %s successfully", actualDaemonSet.Name, action)
+			"DaemonSet '%s' for SBR Agent %s successfully", actualDaemonSet.Name, action)
 		daemonSetLogger.Info(fmt.Sprintf("DaemonSet %s successfully", action))
 	}
 
@@ -1205,7 +1205,7 @@ func (r *StorageBasedRemediationConfigReconciler) handleDeletion(
 	logger.Info("Starting StorageBasedRemediationConfig cleanup")
 
 	// Clean up the ClusterRoleBinding specific to this StorageBasedRemediationConfig
-	clusterRoleBindingName := fmt.Sprintf("sbd-agent-%s-%s", sbrConfig.Namespace, sbrConfig.Name)
+	clusterRoleBindingName := fmt.Sprintf("sbr-agent-%s-%s", sbrConfig.Namespace, sbrConfig.Name)
 	clusterRoleBinding := &rbacv1.ClusterRoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: clusterRoleBindingName,
@@ -1256,18 +1256,18 @@ func (r *StorageBasedRemediationConfigReconciler) ensureServiceAccount(
 	// Create the service account - SHARED across multiple StorageBasedRemediationConfigs in the same namespace
 	serviceAccount := &corev1.ServiceAccount{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "sbd-agent",
+			Name:      "sbr-agent",
 			Namespace: namespaceName,
 			Labels: map[string]string{
-				"app":                          "sbd-agent",
-				"app.kubernetes.io/name":       "sbd-agent",
+				"app":                          "sbr-agent",
+				"app.kubernetes.io/name":       "sbr-agent",
 				"app.kubernetes.io/component":  "agent",
-				"app.kubernetes.io/part-of":    "sbd-operator",
-				"app.kubernetes.io/managed-by": "sbd-operator",
+				"app.kubernetes.io/part-of":    "sbr-operator",
+				"app.kubernetes.io/managed-by": "sbr-operator",
 			},
 			Annotations: map[string]string{
-				"sbd-operator/shared-resource": "true",
-				"sbd-operator/managed-by":      "sbd-operator",
+				"sbr-operator/shared-resource": "true",
+				"sbr-operator/managed-by":      "sbr-operator",
 			},
 		},
 	}
@@ -1283,13 +1283,13 @@ func (r *StorageBasedRemediationConfigReconciler) ensureServiceAccount(
 		}
 
 		// Update management labels
-		serviceAccount.Labels["app"] = "sbd-agent"
-		serviceAccount.Labels["app.kubernetes.io/name"] = "sbd-agent"
+		serviceAccount.Labels["app"] = "sbr-agent"
+		serviceAccount.Labels["app.kubernetes.io/name"] = "sbr-agent"
 		serviceAccount.Labels["app.kubernetes.io/component"] = "agent"
 		serviceAccount.Labels["app.kubernetes.io/part-of"] = SBROperatorName
 		serviceAccount.Labels["app.kubernetes.io/managed-by"] = SBROperatorName
-		serviceAccount.Annotations["sbd-operator/shared-resource"] = "true"
-		serviceAccount.Annotations["sbd-operator/managed-by"] = SBROperatorName
+		serviceAccount.Annotations["sbr-operator/shared-resource"] = "true"
+		serviceAccount.Annotations["sbr-operator/managed-by"] = SBROperatorName
 
 		return nil
 	})
@@ -1299,37 +1299,37 @@ func (r *StorageBasedRemediationConfigReconciler) ensureServiceAccount(
 	}
 
 	if result == controllerutil.OperationResultCreated {
-		logger.Info("Service account created for SBD agent", "serviceAccount", "sbd-agent", "namespace", namespaceName)
+		logger.Info("Service account created for SBR agent", "serviceAccount", "sbr-agent", "namespace", namespaceName)
 		r.emitEventf(sbrConfig, EventTypeNormal, ReasonServiceAccountCreated,
-			"Service account 'sbd-agent' created in namespace '%s'", namespaceName)
+			"Service account 'sbr-agent' created in namespace '%s'", namespaceName)
 	}
 
-	// Create the ClusterRoleBinding to use the existing sbd-agent-role
+	// Create the ClusterRoleBinding to use the existing sbr-agent-role
 	// Use StorageBasedRemediationConfig-specific name to avoid conflicts
 	clusterRoleBinding := &rbacv1.ClusterRoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: fmt.Sprintf("sbd-agent-%s-%s", namespaceName, sbrConfig.Name),
+			Name: fmt.Sprintf("sbr-agent-%s-%s", namespaceName, sbrConfig.Name),
 			Labels: map[string]string{
-				"app":                          "sbd-agent",
-				"app.kubernetes.io/name":       "sbd-agent",
+				"app":                          "sbr-agent",
+				"app.kubernetes.io/name":       "sbr-agent",
 				"app.kubernetes.io/component":  "agent",
-				"app.kubernetes.io/part-of":    "sbd-operator",
-				"app.kubernetes.io/managed-by": "sbd-operator",
-				"sbdconfig":                    sbrConfig.Name,
-				"sbdconfig-namespace":          namespaceName,
+				"app.kubernetes.io/part-of":    "sbr-operator",
+				"app.kubernetes.io/managed-by": "sbr-operator",
+				"sbrconfig":                    sbrConfig.Name,
+				"sbrconfig-namespace":          namespaceName,
 			},
 		},
 		Subjects: []rbacv1.Subject{
 			{
 				Kind:      "ServiceAccount",
-				Name:      "sbd-agent",
+				Name:      "sbr-agent",
 				Namespace: namespaceName,
 			},
 		},
 		RoleRef: rbacv1.RoleRef{
 			APIGroup: "rbac.authorization.k8s.io",
 			Kind:     "ClusterRole",
-			Name:     "sbd-operator-sbd-agent-role", // Use the generated cluster role with proper permissions
+			Name:     "sbr-operator-sbr-agent-role", // Use the generated cluster role with proper permissions
 		},
 	}
 
@@ -1345,36 +1345,36 @@ func (r *StorageBasedRemediationConfigReconciler) ensureServiceAccount(
 	}
 
 	if result == controllerutil.OperationResultCreated {
-		logger.Info("ClusterRoleBinding created for SBD agent",
-			"clusterRoleBinding", fmt.Sprintf("sbd-agent-%s-%s", namespaceName, sbrConfig.Name))
+		logger.Info("ClusterRoleBinding created for SBR agent",
+			"clusterRoleBinding", fmt.Sprintf("sbr-agent-%s-%s", namespaceName, sbrConfig.Name))
 		r.emitEventf(sbrConfig, EventTypeNormal, ReasonClusterRoleBindingCreated,
-			"ClusterRoleBinding 'sbd-agent-%s-%s' created", namespaceName, sbrConfig.Name)
+			"ClusterRoleBinding 'sbr-agent-%s-%s' created", namespaceName, sbrConfig.Name)
 	}
 
-	// Bind sbd-agent SA to privileged SCC (OpenShift) so pods can run without a custom SCC.
-	privilegedSCCBindingName := fmt.Sprintf("sbd-operator-sbd-agent-privileged-scc-%s", namespaceName)
+	// Bind sbr-agent SA to privileged SCC (OpenShift) so pods can run without a custom SCC.
+	privilegedSCCBindingName := fmt.Sprintf("sbr-operator-sbr-agent-privileged-scc-%s", namespaceName)
 	privilegedSCCBinding := &rbacv1.ClusterRoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: privilegedSCCBindingName,
 			Labels: map[string]string{
-				"app":                          "sbd-agent",
-				"app.kubernetes.io/name":       "sbd-agent",
+				"app":                          "sbr-agent",
+				"app.kubernetes.io/name":       "sbr-agent",
 				"app.kubernetes.io/component":  "agent",
-				"app.kubernetes.io/part-of":    "sbd-operator",
-				"app.kubernetes.io/managed-by": "sbd-operator",
+				"app.kubernetes.io/part-of":    "sbr-operator",
+				"app.kubernetes.io/managed-by": "sbr-operator",
 			},
 		},
 		Subjects: []rbacv1.Subject{
 			{
 				Kind:      "ServiceAccount",
-				Name:      "sbd-agent",
+				Name:      "sbr-agent",
 				Namespace: namespaceName,
 			},
 		},
 		RoleRef: rbacv1.RoleRef{
 			APIGroup: "rbac.authorization.k8s.io",
 			Kind:     "ClusterRole",
-			Name:     "sbd-operator-sbd-agent-privileged-scc",
+			Name:     "sbr-operator-sbr-agent-privileged-scc",
 		},
 	}
 	_, err = controllerutil.CreateOrUpdate(ctx, r.Client, privilegedSCCBinding, func() error { return nil })
@@ -1387,13 +1387,13 @@ func (r *StorageBasedRemediationConfigReconciler) ensureServiceAccount(
 
 // buildDaemonSet constructs the desired DaemonSet based on the StorageBasedRemediationConfig
 func (r *StorageBasedRemediationConfigReconciler) buildDaemonSet(sbrConfig *medik8sv1alpha1.StorageBasedRemediationConfig, agentImage string) *appsv1.DaemonSet {
-	daemonSetName := fmt.Sprintf("sbd-agent-%s", sbrConfig.Name)
+	daemonSetName := fmt.Sprintf("sbr-agent-%s", sbrConfig.Name)
 	labels := map[string]string{
-		"app":        "sbd-agent",
-		"component":  "sbd-agent",
+		"app":        "sbr-agent",
+		"component":  "sbr-agent",
 		"version":    "latest",
-		"managed-by": "sbd-operator",
-		"sbdconfig":  sbrConfig.Name,
+		"managed-by": "sbr-operator",
+		"sbrconfig":  sbrConfig.Name,
 	}
 
 	return &appsv1.DaemonSet{
@@ -1405,8 +1405,8 @@ func (r *StorageBasedRemediationConfigReconciler) buildDaemonSet(sbrConfig *medi
 		Spec: appsv1.DaemonSetSpec{
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{
-					"app":       "sbd-agent",
-					"sbdconfig": sbrConfig.Name,
+					"app":       "sbr-agent",
+					"sbrconfig": sbrConfig.Name,
 				},
 			},
 			Template: corev1.PodTemplateSpec{
@@ -1417,7 +1417,7 @@ func (r *StorageBasedRemediationConfigReconciler) buildDaemonSet(sbrConfig *medi
 					},
 				},
 				Spec: corev1.PodSpec{
-					ServiceAccountName: "sbd-agent",
+					ServiceAccountName: "sbr-agent",
 					HostNetwork:        true,
 					HostPID:            true,
 					DNSPolicy:          corev1.DNSClusterFirstWithHostNet,
@@ -1450,7 +1450,7 @@ func (r *StorageBasedRemediationConfigReconciler) buildDaemonSet(sbrConfig *medi
 					},
 					Containers: []corev1.Container{
 						{
-							Name:            "sbd-agent",
+							Name:            "sbr-agent",
 							Image:           agentImage,
 							ImagePullPolicy: corev1.PullPolicy(sbrConfig.Spec.GetImagePullPolicy()),
 							SecurityContext: &corev1.SecurityContext{
@@ -1512,7 +1512,7 @@ func (r *StorageBasedRemediationConfigReconciler) buildDaemonSet(sbrConfig *medi
 							LivenessProbe: &corev1.Probe{
 								ProbeHandler: corev1.ProbeHandler{
 									Exec: &corev1.ExecAction{
-										Command: []string{"/bin/sh", "-c", "grep -l sbd-agent /proc/*/cmdline 2>/dev/null"},
+										Command: []string{"/bin/sh", "-c", "grep -l sbr-agent /proc/*/cmdline 2>/dev/null"},
 									},
 								},
 								InitialDelaySeconds: 30,
@@ -1525,7 +1525,7 @@ func (r *StorageBasedRemediationConfigReconciler) buildDaemonSet(sbrConfig *medi
 								ProbeHandler: corev1.ProbeHandler{
 									Exec: &corev1.ExecAction{
 										Command: []string{"/bin/sh", "-c",
-											fmt.Sprintf("test -c %s && grep -l sbd-agent /proc/*/cmdline 2>/dev/null",
+											fmt.Sprintf("test -c %s && grep -l sbr-agent /proc/*/cmdline 2>/dev/null",
 												sbrConfig.Spec.GetWatchdogPath())},
 									},
 								},
@@ -1538,7 +1538,7 @@ func (r *StorageBasedRemediationConfigReconciler) buildDaemonSet(sbrConfig *medi
 							StartupProbe: &corev1.Probe{
 								ProbeHandler: corev1.ProbeHandler{
 									Exec: &corev1.ExecAction{
-										Command: []string{"/bin/sh", "-c", "grep -l sbd-agent /proc/*/cmdline 2>/dev/null"},
+										Command: []string{"/bin/sh", "-c", "grep -l sbr-agent /proc/*/cmdline 2>/dev/null"},
 									},
 								},
 								InitialDelaySeconds: 5,
@@ -1557,7 +1557,7 @@ func (r *StorageBasedRemediationConfigReconciler) buildDaemonSet(sbrConfig *medi
 	}
 }
 
-// buildSBRAgentArgs builds the command line arguments for the sbd-agent container
+// buildSBRAgentArgs builds the command line arguments for the sbr-agent container
 func (r *StorageBasedRemediationConfigReconciler) buildSBRAgentArgs(sbrConfig *medik8sv1alpha1.StorageBasedRemediationConfig) []string {
 	// Get configured watchdog timeout and calculate pet interval
 	watchdogTimeout := sbrConfig.Spec.GetWatchdogTimeout()
@@ -1616,7 +1616,7 @@ func (r *StorageBasedRemediationConfigReconciler) buildNodeSelector(sbrConfig *m
 	return nodeSelector
 }
 
-// buildVolumeMounts builds the volume mounts for the sbd-agent container
+// buildVolumeMounts builds the volume mounts for the sbr-agent container
 func (r *StorageBasedRemediationConfigReconciler) buildVolumeMounts(sbrConfig *medik8sv1alpha1.StorageBasedRemediationConfig) []corev1.VolumeMount {
 	mounts := []corev1.VolumeMount{
 		{Name: "dev", MountPath: "/dev"},
@@ -1709,16 +1709,16 @@ func (r *StorageBasedRemediationConfigReconciler) updateStatus(
 			medik8sv1alpha1.SBRConfigConditionDaemonSetReady,
 			metav1.ConditionTrue,
 			"DaemonSetReady",
-			fmt.Sprintf("All %d SBD agent pods are ready", latestDaemonSet.Status.NumberReady),
+			fmt.Sprintf("All %d SBR agent pods are ready", latestDaemonSet.Status.NumberReady),
 		)
 	} else {
 		var reason, message string
 		if latestDaemonSet.Status.DesiredNumberScheduled == 0 {
 			reason = "NoNodesScheduled"
-			message = "No nodes are scheduled to run SBD agent pods"
+			message = "No nodes are scheduled to run SBR agent pods"
 		} else {
 			reason = "PodsNotReady"
-			message = fmt.Sprintf("%d of %d SBD agent pods are ready",
+			message = fmt.Sprintf("%d of %d SBR agent pods are ready",
 				latestDaemonSet.Status.NumberReady,
 				latestDaemonSet.Status.DesiredNumberScheduled)
 		}

@@ -61,7 +61,7 @@ import (
 	"github.com/medik8s/storage-based-remediation/pkg/watchdog"
 )
 
-// RBAC permissions for SBD Agent
+// RBAC permissions for SBR Agent
 // The agent reads StorageBasedRemediationConfig, sets SBRStorageUnhealthy node condition for unhealthy peers, and reconciles StorageBasedRemediation CRs (created by NHC) for fencing.
 // +kubebuilder:rbac:groups=storage-based-remediation.medik8s.io,resources=sbdconfigs,verbs=get;list;watch
 // +kubebuilder:rbac:groups=storage-based-remediation.medik8s.io,resources=sbdconfigs/status,verbs=get
@@ -78,18 +78,18 @@ var (
 		"Watchdog timeout duration (how long before watchdog triggers reboot)")
 	petInterval = flag.Duration(agent.FlagPetInterval, 15*time.Second,
 		"Pet interval (how often to pet the watchdog)")
-	sbrDevice      = flag.String(agent.FlagSBRDevice, agent.DefaultSBRDevice, "Path to the SBD block device")
+	sbrDevice      = flag.String(agent.FlagSBRDevice, agent.DefaultSBRDevice, "Path to the SBR block device")
 	sbrFileLocking = flag.Bool(agent.FlagSBRFileLocking, agent.DefaultSBRFileLocking,
-		"Enable file locking for SBD device operations (recommended for shared storage)")
+		"Enable file locking for SBR device operations (recommended for shared storage)")
 	nodeName    = flag.String(agent.FlagNodeName, agent.DefaultNodeName, "Name of this Kubernetes node")
 	clusterName = flag.String(agent.FlagClusterName, agent.DefaultClusterName,
 		"Name of the cluster for node mapping")
 	nodeID = flag.Uint(agent.FlagNodeID, agent.DefaultNodeID,
 		"Unique numeric ID for this node (1-255) - deprecated, use hash-based mapping")
 	sbrTimeoutSeconds = flag.Uint(agent.FlagSBRTimeoutSeconds, agent.DefaultSBRTimeoutSeconds,
-		"SBD timeout in seconds (determines heartbeat interval)")
+		"SBR timeout in seconds (determines heartbeat interval)")
 	sbrUpdateInterval = flag.Duration(agent.FlagSBRUpdateInterval, 5*time.Second,
-		"Interval for updating SBD device with node status")
+		"Interval for updating SBR device with node status")
 	peerCheckInterval = flag.Duration(agent.FlagPeerCheckInterval, 5*time.Second, "Interval for checking peer heartbeats")
 	logLevel          = flag.String(agent.FlagLogLevel, agent.DefaultLogLevel, "Log level (debug, info, warn, error)")
 	rebootMethod      = flag.String(agent.FlagRebootMethod, agent.DefaultRebootMethod,
@@ -110,14 +110,14 @@ var (
 )
 
 const (
-	// SBRNodeIDOffset is the offset where node ID is written in the SBD device
+	// SBRNodeIDOffset is the offset where node ID is written in the SBR device
 	SBRNodeIDOffset = 0
-	// MaxNodeNameLength is the maximum length for a node name in SBD device
+	// MaxNodeNameLength is the maximum length for a node name in SBR device
 	MaxNodeNameLength = 256
 	// DefaultNodeID is the placeholder node ID used when none is specified
 	DefaultNodeID = 1
 
-	// Retry configuration constants for SBD Agent operations
+	// Retry configuration constants for SBR Agent operations
 	// MaxCriticalRetries is the maximum number of retry attempts for critical operations
 	MaxCriticalRetries = 3
 	// InitialCriticalRetryDelay is the initial delay between critical operation retries
@@ -131,7 +131,7 @@ const (
 	MaxConsecutiveFailures = 7
 	// FailureCountResetInterval is the interval after which failure counts are reset
 	FailureCountResetInterval = 10 * time.Minute
-	// SBRDefaultTimeoutSec used to calculate the heartbeat, would use SBD_TIMEOUT_SECONDS var if exist
+	// SBRDefaultTimeoutSec used to calculate the heartbeat, would use SBR_TIMEOUT_SECONDS var if exist
 	SBRDefaultTimeoutSec = 30
 
 	// File locking constants
@@ -145,13 +145,13 @@ const (
 	DefaultMinMissedHeartbeatsForRemediation = MaxConsecutiveFailures - 1
 
 	// SBRAgentRemediationGraceAnnotationKey is written on the Node right before deleting
-	// an SBD-agent remediation to provide a grace period for sbd-agent to start running on the node and report health, before re-creating a new remediation.
-	SBRAgentRemediationGraceAnnotationKey = "medik8s.io/sbd-remediation-grace-at"
+	// an SBR-agent remediation to provide a grace period for sbr-agent to start running on the node and report health, before re-creating a new remediation.
+	SBRAgentRemediationGraceAnnotationKey = "medik8s.io/sbr-remediation-grace-at"
 	// SBRAgentRemediationGracePeriod is the minimum time to wait between deletion and re-creation.
 	SBRAgentRemediationGracePeriod = 3 * time.Minute
 
 	// RemediationCheckTimeout is the timeout for checking if a StorageBasedRemediation CR exists
-	// when SBD is unhealthy; used to avoid blocking the watchdog loop.
+	// when SBR is unhealthy; used to avoid blocking the watchdog loop.
 	RemediationCheckTimeout = 5 * time.Second
 )
 
@@ -177,12 +177,12 @@ const (
 	EventFieldReason = "Reason" // Event field name for use in tests with HaveField
 
 	EventReasonSelfFenceInitiated            = "SelfFenceInitiated"            // Emitted when the agent triggers self-fence (reboot/panic)
-	EventReasonSBRUnhealthyWatchdogTimeout   = "SBRUnhealthyWatchdogTimeout"   // Emitted when SBD unhealthy and remediation CR exists, skipping pet
-	EventReasonSBRUnhealthySkipPetAPIError   = "SBRUnhealthySkipPetAPIError"   // Emitted when SBD unhealthy and remediation CR check failed (API error), skipping pet
-	EventReasonSBRUnhealthyDetectOnly        = "SBRUnhealthyDetectOnly"        // Emitted in detect-only mode when SBD becomes unhealthy (watchdog disarmed)
+	EventReasonSBRUnhealthyWatchdogTimeout   = "SBRUnhealthyWatchdogTimeout"   // Emitted when SBR unhealthy and remediation CR exists, skipping pet
+	EventReasonSBRUnhealthySkipPetAPIError   = "SBRUnhealthySkipPetAPIError"   // Emitted when SBR unhealthy and remediation CR check failed (API error), skipping pet
+	EventReasonSBRUnhealthyDetectOnly        = "SBRUnhealthyDetectOnly"        // Emitted in detect-only mode when SBR becomes unhealthy (watchdog disarmed)
 	EventReasonSelfFenceAbortedNoRemediation = "SelfFenceAbortedNoRemediation" // Emitted when self-fence aborted because no StorageBasedRemediation CR exists
 	EventReasonWatchdogPetFailed             = "WatchdogPetFailed"             // Emitted when watchdog pet failures exceed threshold
-	EventReasonSBRWriteFailed                = "SBRWriteFailed"                // Emitted when SBD device write failures exceed threshold
+	EventReasonSBRWriteFailed                = "SBRWriteFailed"                // Emitted when SBR device write failures exceed threshold
 	EventReasonHeartbeatWriteFailed          = "HeartbeatWriteFailed"          // Emitted when heartbeat write failures exceed threshold
 	EventReasonFenceMessageDetected          = "FenceMessageDetected"          // Emitted when a fence message is read from the agent's own slot
 )
@@ -235,38 +235,38 @@ func initializeLogger(level string) error {
 
 // Prometheus metrics definitions
 var (
-	// sbd_agent_status_healthy: 1 if the agent is healthy, 0 otherwise
-	// This metric indicates overall agent health including watchdog and SBD device access
+	// sbr_agent_status_healthy: 1 if the agent is healthy, 0 otherwise
+	// This metric indicates overall agent health including watchdog and SBR device access
 	agentHealthyGauge = prometheus.NewGauge(prometheus.GaugeOpts{
-		Name: "sbd_agent_status_healthy",
-		Help: "SBD Agent health status (1 = healthy, 0 = unhealthy)",
+		Name: "sbr_agent_status_healthy",
+		Help: "SBR Agent health status (1 = healthy, 0 = unhealthy)",
 	})
 
-	// sbd_device_io_errors_total: Total number of I/O errors with shared SBD device
-	// This metric tracks all I/O operation failures when interacting with the SBD device
+	// sbr_device_io_errors_total: Total number of I/O errors with shared SBR device
+	// This metric tracks all I/O operation failures when interacting with the SBR device
 	sbrIOErrorsCounter = prometheus.NewCounter(prometheus.CounterOpts{
-		Name: "sbd_device_io_errors_total",
-		Help: "Total number of I/O errors encountered when interacting with the shared SBD device",
+		Name: "sbr_device_io_errors_total",
+		Help: "Total number of I/O errors encountered when interacting with the shared SBR device",
 	})
 
-	// sbd_watchdog_pets_total: Total number of successful watchdog pets
+	// sbr_watchdog_pets_total: Total number of successful watchdog pets
 	// This metric counts how many times the kernel watchdog has been successfully petted
 	watchdogPetsCounter = prometheus.NewCounter(prometheus.CounterOpts{
-		Name: "sbd_watchdog_pets_total",
+		Name: "sbr_watchdog_pets_total",
 		Help: "Total number of times the local kernel watchdog has been successfully petted",
 	})
 
-	// sbd_peer_status: Current liveness status of each peer node
+	// sbr_peer_status: Current liveness status of each peer node
 	// This metric uses labels to track the status of each peer node in the cluster
 	peerStatusGaugeVec = prometheus.NewGaugeVec(prometheus.GaugeOpts{
-		Name: "sbd_peer_status",
+		Name: "sbr_peer_status",
 		Help: "Current liveness status of each peer node (1 = alive, 0 = unhealthy/down)",
 	}, []string{"node_id", "node_name", "status"})
 
-	// sbd_self_fenced_total: Total number of self-fence initiations
+	// sbr_self_fenced_total: Total number of self-fence initiations
 	// This metric counts how many times this agent has initiated self-fencing
 	selfFencedCounter = prometheus.NewCounter(prometheus.CounterOpts{
-		Name: "sbd_self_fenced_total",
+		Name: "sbr_self_fenced_total",
 		Help: "Total number of times the agent has initiated a self-fence",
 	})
 )
@@ -465,7 +465,7 @@ func generateFenceDevicePath(heartbeatDevicePath string) string {
 	return heartbeatDevicePath + agent.SharedStorageFenceDeviceSuffix
 }
 
-// SBRAgent represents the main SBD agent with self-fencing capabilities
+// SBRAgent represents the main SBR agent with self-fencing capabilities
 type SBRAgent struct {
 	recorderObject      runtime.Object
 	recorder            record.EventRecorder
@@ -521,7 +521,7 @@ type SBRAgent struct {
 	detectOnlyMode bool
 }
 
-// NewSBRAgentWithWatchdog creates a new SBD agent with a provided watchdog interface.
+// NewSBRAgentWithWatchdog creates a new SBR agent with a provided watchdog interface.
 // When detectOnlyMode is true, the watchdog is not used for remediation (e.g. pass a no-op mock to disarm).
 func NewSBRAgentWithWatchdog(
 	wd mocks.WatchdogInterface,
@@ -578,7 +578,7 @@ func NewSBRAgentWithWatchdog(
 		return nil, fmt.Errorf("metrics port must be between 1 and 65535, got %d", metricsPort)
 	}
 	if sbrUpdateInterval <= 0 {
-		return nil, fmt.Errorf("SBD update interval must be positive")
+		return nil, fmt.Errorf("SBR update interval must be positive")
 	}
 	if heartbeatInterval <= 0 {
 		return nil, fmt.Errorf("heartbeat interval must be positive")
@@ -632,7 +632,7 @@ func NewSBRAgentWithWatchdog(
 	// Initialize heartbeat and fence devices
 	if err := sbrAgent.initializeSBRDevices(); err != nil {
 		sbrAgent.cancel()
-		return nil, fmt.Errorf("failed to initialize SBD devices: %w", err)
+		return nil, fmt.Errorf("failed to initialize SBR devices: %w", err)
 	}
 
 	// Initialize node managers for consistent slot assignment on both devices
@@ -660,7 +660,7 @@ func NewSBRAgentWithWatchdog(
 	if err := sbrAgent.initializeControllerManager(); err != nil {
 		return nil, fmt.Errorf("failed to initialize controller manager: %w", err)
 	}
-	sbrAgent.recorder = sbrAgent.controllerManager.GetEventRecorderFor("sbd-agent")
+	sbrAgent.recorder = sbrAgent.controllerManager.GetEventRecorderFor("sbr-agent")
 	// Get the first StorageBasedRemediationConfig object from the POD_NAMESPACE
 	sbrConfigs := &v1alpha1.StorageBasedRemediationConfigList{}
 	if err := sbrAgent.k8sClient.List(
@@ -720,7 +720,7 @@ func (s *SBRAgent) initMetrics() {
 	}()
 }
 
-// initializeSBRDevices opens and initializes the SBD block devices
+// initializeSBRDevices opens and initializes the SBR block devices
 func (s *SBRAgent) initializeSBRDevices() error {
 	heartbeatDevice, err := blockdevice.OpenWithTimeout(s.heartbeatDevicePath, s.ioTimeout,
 		logger.WithName("heartbeat-device"))
@@ -736,14 +736,14 @@ func (s *SBRAgent) initializeSBRDevices() error {
 
 	s.heartbeatDevice = heartbeatDevice
 	s.fenceDevice = fenceDevice
-	logger.Info("Successfully opened SBD devices",
+	logger.Info("Successfully opened SBR devices",
 		"heartbeatDevicePath", s.heartbeatDevicePath,
 		"fenceDevicePath", s.fenceDevicePath,
 		"ioTimeout", s.ioTimeout)
 	return nil
 }
 
-// setSBRDevices allows setting custom SBD devices (useful for testing)
+// setSBRDevices allows setting custom SBR devices (useful for testing)
 func (s *SBRAgent) setSBRDevices(heartbeatDevice, fenceDevice mocks.BlockDeviceInterface) {
 	s.heartbeatDevice = heartbeatDevice
 	s.fenceDevice = fenceDevice
@@ -752,7 +752,7 @@ func (s *SBRAgent) setSBRDevices(heartbeatDevice, fenceDevice mocks.BlockDeviceI
 // initializeNodeManagers initializes the node managers for hash-based slot mapping
 func (s *SBRAgent) initializeNodeManagers(clusterName string, fileLockingEnabled bool) error {
 	if s.heartbeatDevice == nil || s.fenceDevice == nil {
-		return fmt.Errorf("SBD devices must be initialized before node managers")
+		return fmt.Errorf("SBR devices must be initialized before node managers")
 	}
 
 	// Use heartbeat device for shared node manager (both devices will use same slot assignments)
@@ -789,14 +789,14 @@ func (s *SBRAgent) initializeNodeManagers(clusterName string, fileLockingEnabled
 	return nil
 }
 
-// setSBRHealthy safely updates the SBD health status
+// setSBRHealthy safely updates the SBR health status
 func (s *SBRAgent) setSBRHealthy(healthy bool) {
 	s.sbrHealthyMutex.Lock()
 	defer s.sbrHealthyMutex.Unlock()
 	s.sbrHealthy = healthy
 }
 
-// isSBRHealthy safely reads the SBD health status
+// isSBRHealthy safely reads the SBR health status
 func (s *SBRAgent) isSBRHealthy() bool {
 	s.sbrHealthyMutex.RLock()
 	defer s.sbrHealthyMutex.RUnlock()
@@ -806,7 +806,7 @@ func (s *SBRAgent) isSBRHealthy() bool {
 // remediationExistsForThisNode checks if a StorageBasedRemediation CR exists for this node.
 // Uses a short timeout to avoid blocking the watchdog loop. Returns (true, nil) if the CR
 // exists, (false, nil) if it does not (IsNotFound), and (false, err) on API errors or timeout.
-// Used when SBD is unhealthy: if we have API access and no CR exists, we pet the watchdog
+// Used when SBR is unhealthy: if we have API access and no CR exists, we pet the watchdog
 // and let NHC decide (e.g. too many nodes down); only skip petting when CR exists or no API access.
 func (s *SBRAgent) remediationExistsForThisNode() (bool, error) {
 	checkCtx, cancel := context.WithTimeout(s.ctx, RemediationCheckTimeout)
@@ -852,14 +852,14 @@ func (s *SBRAgent) incrementFailureCount(operationType string) int {
 	case "watchdog":
 		s.watchdogFailureCount++
 		counter = s.watchdogFailureCount
-	case "sbd":
+	case "sbr":
 		s.sbrFailureCount++
 		counter = s.sbrFailureCount
-		// Increment SBD I/O errors counter
+		// Increment SBR I/O errors counter
 		sbrIOErrorsCounter.Inc()
 	case "heartbeat":
 		s.heartbeatFailureCount++
-		// Increment SBD I/O errors counter
+		// Increment SBR I/O errors counter
 		sbrIOErrorsCounter.Inc()
 		counter = s.heartbeatFailureCount
 	}
@@ -900,9 +900,9 @@ func (s *SBRAgent) resetFailureCount(operationType string) {
 			logger.V(1).Info("Reset watchdog failure count", "previousCount", s.watchdogFailureCount)
 			s.watchdogFailureCount = 0
 		}
-	case "sbd":
+	case "sbr":
 		if s.sbrFailureCount > 0 {
-			logger.V(1).Info("Reset SBD failure count", "previousCount", s.sbrFailureCount)
+			logger.V(1).Info("Reset SBR failure count", "previousCount", s.sbrFailureCount)
 			s.sbrFailureCount = 0
 		}
 	case "heartbeat":
@@ -926,9 +926,9 @@ func (s *SBRAgent) shouldTriggerSelfFence() (bool, string) {
 		msg = fmt.Sprintf("watchdog pet failures exceeded threshold (%d)", MaxConsecutiveFailures)
 	} else if s.sbrFailureCount >= MaxConsecutiveFailures {
 		s.recorder.Event(s.recorderObject, corev1.EventTypeWarning, EventReasonSBRWriteFailed,
-			fmt.Sprintf("SBD device write failures on (%s, %d) exceeded threshold", s.nodeName, s.nodeID))
+			fmt.Sprintf("SBR device write failures on (%s, %d) exceeded threshold", s.nodeName, s.nodeID))
 		shouldSelfFence = true
-		msg = fmt.Sprintf("SBD device failures exceeded threshold (%d)", MaxConsecutiveFailures)
+		msg = fmt.Sprintf("SBR device failures exceeded threshold (%d)", MaxConsecutiveFailures)
 	} else if s.heartbeatFailureCount >= MaxConsecutiveFailures {
 		s.recorder.Event(s.recorderObject, corev1.EventTypeWarning, EventReasonHeartbeatWriteFailed,
 			fmt.Sprintf("Heartbeat write failures on (%s, %d) exceeded threshold", s.nodeName, s.nodeID))
@@ -965,7 +965,7 @@ func (s *SBRAgent) writeHeartbeatToSBRInternal() error {
 	if s.heartbeatDevice == nil || s.heartbeatDevice.IsClosed() {
 		// Try to reinitialize the device
 		if err := s.initializeSBRDevices(); err != nil {
-			return fmt.Errorf("SBD devices are closed and reinitialize failed: %w", err)
+			return fmt.Errorf("SBR devices are closed and reinitialize failed: %w", err)
 		}
 	}
 
@@ -986,16 +986,16 @@ func (s *SBRAgent) writeHeartbeatToSBRInternal() error {
 	// Write heartbeat message to the designated slot
 	n, err := s.heartbeatDevice.WriteAt(msgBytes, slotOffset)
 	if err != nil {
-		return fmt.Errorf("failed to write heartbeat to SBD device at offset %d: %w", slotOffset, err)
+		return fmt.Errorf("failed to write heartbeat to SBR device at offset %d: %w", slotOffset, err)
 	}
 
 	if n != len(msgBytes) {
-		return fmt.Errorf("partial write to SBD device: wrote %d bytes, expected %d", n, len(msgBytes))
+		return fmt.Errorf("partial write to SBR device: wrote %d bytes, expected %d", n, len(msgBytes))
 	}
 
 	// Ensure data is committed to storage
 	if err := s.heartbeatDevice.Sync(); err != nil {
-		return fmt.Errorf("failed to sync SBD device after heartbeat write: %w", err)
+		return fmt.Errorf("failed to sync SBR device after heartbeat write: %w", err)
 	}
 
 	logger.V(1).Info("Successfully wrote heartbeat message",
@@ -1008,7 +1008,7 @@ func (s *SBRAgent) writeHeartbeatToSBRInternal() error {
 // readPeerHeartbeat reads and processes a heartbeat from a peer node's slot
 func (s *SBRAgent) readPeerHeartbeat(peerNodeID uint16) error {
 	if s.heartbeatDevice == nil || s.heartbeatDevice.IsClosed() {
-		return fmt.Errorf("SBD device is not available")
+		return fmt.Errorf("SBR device is not available")
 	}
 
 	// Calculate slot offset for the peer node
@@ -1018,7 +1018,7 @@ func (s *SBRAgent) readPeerHeartbeat(peerNodeID uint16) error {
 	slotData := make([]byte, sbdprotocol.SBD_SLOT_SIZE)
 	n, err := s.heartbeatDevice.ReadAt(slotData, slotOffset)
 	if err != nil {
-		// Increment SBD I/O errors counter for read failures
+		// Increment SBR I/O errors counter for read failures
 		sbrIOErrorsCounter.Inc()
 		s.incrementFailureCount("heartbeat")
 		return fmt.Errorf("failed to read peer %d heartbeat from offset %d: %w", peerNodeID, slotOffset, err)
@@ -1072,15 +1072,15 @@ func (s *SBRAgent) readPeerHeartbeat(peerNodeID uint16) error {
 	return nil
 }
 
-// Start begins the SBD agent operations
+// Start begins the SBR agent operations
 func (s *SBRAgent) Start() error {
 	return s.StartWithContext(s.ctx)
 }
 
-// StartWithContext begins the SBD agent operations and blocks until ctx is cancelled.
+// StartWithContext begins the SBR agent operations and blocks until ctx is cancelled.
 // When ctx is cancelled (e.g. on SIGTERM), the caller should then call Stop() to close the watchdog.
 func (s *SBRAgent) StartWithContext(ctx context.Context) error {
-	logger.Info("Starting SBD Agent",
+	logger.Info("Starting SBR Agent",
 		"watchdogDevice", s.watchdog.Path(),
 		"heartbeatDevice", s.heartbeatDevicePath,
 		"fenceDevice", s.fenceDevicePath,
@@ -1099,14 +1099,14 @@ func (s *SBRAgent) StartWithContext(ctx context.Context) error {
 	// Start the watchdog monitoring goroutine
 	go s.watchdogLoop()
 
-	// Start SBD device monitoring if available
+	// Start SBR device monitoring if available
 	if s.heartbeatDevicePath != "" {
 		go s.heartbeatLoop()
 		go s.peerMonitorLoop()
 	}
 
 	// Start fencing loop if enabled
-	logger.Info("Starting SBD Agent controller manager")
+	logger.Info("Starting SBR Agent controller manager")
 	return s.controllerManager.Start(ctx)
 }
 
@@ -1127,9 +1127,9 @@ func (s *SBRAgent) RunUntilShutdown(sigChan <-chan os.Signal) error {
 	return err
 }
 
-// Stop gracefully shuts down the SBD agent
+// Stop gracefully shuts down the SBR agent
 func (s *SBRAgent) Stop() error {
-	logger.Info("Stopping SBD Agent")
+	logger.Info("Stopping SBR Agent")
 
 	// Signal all goroutines to stop
 	s.cancel()
@@ -1151,9 +1151,9 @@ func (s *SBRAgent) Stop() error {
 		}
 	}
 
-	// Close SBD devices last (after all operations complete)
+	// Close SBR devices last (after all operations complete)
 	if s.heartbeatDevice != nil && !s.heartbeatDevice.IsClosed() {
-		logger.Info("Closing SBD devices", "heartbeatDevicePath", s.heartbeatDevicePath, "fenceDevicePath", s.fenceDevicePath)
+		logger.Info("Closing SBR devices", "heartbeatDevicePath", s.heartbeatDevicePath, "fenceDevicePath", s.fenceDevicePath)
 		if err := s.heartbeatDevice.Close(); err != nil {
 			logger.Error(err, "Failed to close heartbeat device", "devicePath", s.heartbeatDevicePath)
 			return fmt.Errorf("failed to close heartbeat device: %w", err)
@@ -1175,7 +1175,7 @@ func (s *SBRAgent) Stop() error {
 		}
 	}
 
-	logger.Info("SBD Agent stopped successfully")
+	logger.Info("SBR Agent stopped successfully")
 	return nil
 }
 
@@ -1214,7 +1214,7 @@ func (s *SBRAgent) watchdogLoop() {
 	}
 }
 
-// petWatchdogWhenHealthy pets the watchdog when SBD is healthy, with retry and failure count handling.
+// petWatchdogWhenHealthy pets the watchdog when SBR is healthy, with retry and failure count handling.
 func (s *SBRAgent) petWatchdogWhenHealthy() {
 	err := retry.Do(s.ctx, s.retryConfig, "pet watchdog", func() error {
 		return s.watchdog.Pet()
@@ -1231,63 +1231,63 @@ func (s *SBRAgent) petWatchdogWhenHealthy() {
 	}
 }
 
-// handleWatchdogTickSBRUnhealthy handles one watchdog tick when SBD is unhealthy: detect-only event,
+// handleWatchdogTickSBRUnhealthy handles one watchdog tick when SBR is unhealthy: detect-only event,
 // or remediation CR check and either skip pet (reboot) or pet (let NHC decide).
 func (s *SBRAgent) handleWatchdogTickSBRUnhealthy() {
 	agentHealthyGauge.Set(0)
 	if s.detectOnlyMode {
 		s.recorder.Event(s.recorderObject, corev1.EventTypeWarning, EventReasonSBRUnhealthyDetectOnly,
-			fmt.Sprintf("SBD device unhealthy on (%s, %d); detect-only mode, watchdog disarmed, no reboot", s.nodeName, s.nodeID))
-		logger.Info("SBD unhealthy in detect-only mode (watchdog disarmed, no reboot)",
+			fmt.Sprintf("SBR device unhealthy on (%s, %d); detect-only mode, watchdog disarmed, no reboot", s.nodeName, s.nodeID))
+		logger.Info("SBR unhealthy in detect-only mode (watchdog disarmed, no reboot)",
 			"sbrDevicePath", s.heartbeatDevicePath)
 		return
 	}
 	remediationExists, checkErr := s.remediationExistsForThisNode()
 	if checkErr != nil {
 		s.recorder.Event(s.recorderObject, corev1.EventTypeWarning, EventReasonSBRUnhealthySkipPetAPIError,
-			fmt.Sprintf("SBD device unhealthy on (%s, %d); API check failed, skipping watchdog pet, reboot imminent", s.nodeName, s.nodeID))
-		logger.Error(checkErr, "Skipping watchdog pet - SBD unhealthy and could not verify remediation CR",
+			fmt.Sprintf("SBR device unhealthy on (%s, %d); API check failed, skipping watchdog pet, reboot imminent", s.nodeName, s.nodeID))
+		logger.Error(checkErr, "Skipping watchdog pet - SBR unhealthy and could not verify remediation CR",
 			"sbrDevicePath", s.heartbeatDevicePath)
 		return
 	}
 	if remediationExists {
 		s.recorder.Event(s.recorderObject, corev1.EventTypeWarning, EventReasonSBRUnhealthyWatchdogTimeout,
-			fmt.Sprintf("SBD device unhealthy on (%s, %d); remediation CR exists, skipping watchdog pet, reboot imminent", s.nodeName, s.nodeID))
-		logger.Error(nil, "Skipping watchdog pet - SBD device is unhealthy and remediation CR exists",
+			fmt.Sprintf("SBR device unhealthy on (%s, %d); remediation CR exists, skipping watchdog pet, reboot imminent", s.nodeName, s.nodeID))
+		logger.Error(nil, "Skipping watchdog pet - SBR device is unhealthy and remediation CR exists",
 			"sbrDevicePath", s.heartbeatDevicePath, "sbrHealthy", s.isSBRHealthy())
 		return
 	}
 	if err := s.watchdog.Pet(); err != nil {
-		logger.Error(err, "Failed to pet watchdog while SBD unhealthy (no remediation CR); retry next tick",
+		logger.Error(err, "Failed to pet watchdog while SBR unhealthy (no remediation CR); retry next tick",
 			"watchdogPath", s.watchdog.Path())
 		return
 	}
 	watchdogPetsCounter.Inc()
-	logger.Info("SBD unhealthy but no remediation CR for this node; petting watchdog to allow NHC to decide",
+	logger.Info("SBR unhealthy but no remediation CR for this node; petting watchdog to allow NHC to decide",
 		"sbrDevicePath", s.heartbeatDevicePath, "nodeName", s.nodeName)
 }
 
-// heartbeatLoop continuously writes heartbeat messages to the SBD device
+// heartbeatLoop continuously writes heartbeat messages to the SBR device
 func (s *SBRAgent) heartbeatLoop() {
 	ticker := time.NewTicker(s.heartbeatInterval)
 	defer ticker.Stop()
 
-	logger.Info("Starting SBD heartbeat loop", "interval", s.heartbeatInterval)
+	logger.Info("Starting SBR heartbeat loop", "interval", s.heartbeatInterval)
 
 	for {
 		select {
 		case <-s.ctx.Done():
-			logger.Info("SBD heartbeat loop stopping")
+			logger.Info("SBR heartbeat loop stopping")
 			return
 		case <-ticker.C:
 			// Use retry mechanism for heartbeat operations
-			err := retry.Do(s.ctx, s.retryConfig, "write heartbeat to SBD", func() error {
+			err := retry.Do(s.ctx, s.retryConfig, "write heartbeat to SBR", func() error {
 				return s.writeHeartbeatToSBR()
 			})
 
 			if err != nil {
 				failureCount := s.incrementFailureCount("heartbeat")
-				logger.Error(err, "Failed to write heartbeat to SBD device after retries",
+				logger.Error(err, "Failed to write heartbeat to SBR device after retries",
 					"devicePath", s.heartbeatDevicePath,
 					"nodeID", s.nodeID,
 					"failureCount", failureCount,
@@ -1297,9 +1297,9 @@ func (s *SBRAgent) heartbeatLoop() {
 				// Success - reset failure count and update status
 				s.resetFailureCount("heartbeat")
 				// Only mark as healthy if it was previously unhealthy
-				// The regular SBD device loop will also update this
+				// The regular SBR device loop will also update this
 				if !s.isSBRHealthy() {
-					logger.Info("SBD device recovered during heartbeat write", "devicePath", s.heartbeatDevicePath)
+					logger.Info("SBR device recovered during heartbeat write", "devicePath", s.heartbeatDevicePath)
 					s.setSBRHealthy(true)
 					// Update agent health status
 					agentHealthyGauge.Set(1)
@@ -1328,7 +1328,7 @@ func (s *SBRAgent) peerMonitorLoop() {
 			// First, check our own slot for fence messages directed at us, will trigger fencing in case found
 			if err := s.readOwnSlotForFenceMessage(); err != nil {
 				logger.Info("Error reading own slot for fence messages", "error", err)
-				s.incrementFailureCount("sbd")
+				s.incrementFailureCount("sbr")
 			}
 
 			// If self-fence was detected, stop all operations
@@ -1379,7 +1379,7 @@ func (s *SBRAgent) peerMonitorLoop() {
 				if peer.IsHealthy {
 					// Node regained health: remove condition (set False) if it was True or Unknown
 					if currentStatus == corev1.ConditionTrue || currentStatus == corev1.ConditionUnknown {
-						if err := s.setNodeConditionSBRStorageUnhealthyStatus(peerNodeName, corev1.ConditionFalse, "Recovered", "SBD peer heartbeats resumed"); err != nil {
+						if err := s.setNodeConditionSBRStorageUnhealthyStatus(peerNodeName, corev1.ConditionFalse, "Recovered", "SBR peer heartbeats resumed"); err != nil {
 							logger.Error(err, "Failed to clear SBRStorageUnhealthy condition for recovered peer",
 								"peerNodeID", peer.NodeID, "peerNodeName", peerNodeName)
 						} else {
@@ -1413,7 +1413,7 @@ func (s *SBRAgent) peerMonitorLoop() {
 				// Condition is Unknown: after grace period set True again if still unhealthy
 				if currentStatus == corev1.ConditionUnknown {
 					if now.Sub(lastTransition) > SBRAgentRemediationGracePeriod {
-						if err := s.setNodeConditionSBRStorageUnhealthyStatus(peerNodeName, corev1.ConditionTrue, string(v1alpha1.SBRRemediationReasonHeartbeatTimeout), "SBD peer heartbeat timeout"); err != nil {
+						if err := s.setNodeConditionSBRStorageUnhealthyStatus(peerNodeName, corev1.ConditionTrue, string(v1alpha1.SBRRemediationReasonHeartbeatTimeout), "SBR peer heartbeat timeout"); err != nil {
 							logger.Error(err, "Failed to set SBRStorageUnhealthy condition after grace period", "peerNodeID", peer.NodeID, "peerNodeName", peerNodeName)
 						} else {
 							logger.Info("Set SBRStorageUnhealthy condition after grace period (node still unhealthy)", "peerNodeID", peer.NodeID, "peerNodeName", peerNodeName)
@@ -1424,7 +1424,7 @@ func (s *SBRAgent) peerMonitorLoop() {
 
 				// Condition False or absent: set True so NHC can create remediation
 				if currentStatus == corev1.ConditionFalse || !hasCond {
-					if err := s.setNodeConditionSBRStorageUnhealthy(peerNodeName, true, string(v1alpha1.SBRRemediationReasonHeartbeatTimeout), "SBD peer heartbeat timeout"); err != nil {
+					if err := s.setNodeConditionSBRStorageUnhealthy(peerNodeName, true, string(v1alpha1.SBRRemediationReasonHeartbeatTimeout), "SBR peer heartbeat timeout"); err != nil {
 						logger.Error(err, "Failed to set SBRStorageUnhealthy condition for unhealthy peer", "peerNodeID", peer.NodeID, "peerNodeName", peerNodeName)
 					} else {
 						logger.Info("Set SBRStorageUnhealthy condition for unhealthy peer", "peerNodeID", peer.NodeID, "peerNodeName", peerNodeName)
@@ -1622,21 +1622,21 @@ func (s *SBRAgent) clearNodeGraceAnnotation(ctx context.Context, nodeName string
 	return nil
 }
 
-// validateSBRDevice checks if the SBD device is accessible
+// validateSBRDevice checks if the SBR device is accessible
 func validateSBRDevice(devicePath string) error {
 	if devicePath == "" {
-		return fmt.Errorf("SBD device path cannot be empty")
+		return fmt.Errorf("SBR device path cannot be empty")
 	}
 
 	// Check if device exists
 	info, err := os.Stat(devicePath)
 	if err != nil {
-		return fmt.Errorf("SBD device not accessible: %w", err)
+		return fmt.Errorf("SBR device not accessible: %w", err)
 	}
 
 	// Check if it's a block device
 	if info.Mode()&os.ModeDevice == 0 {
-		logger.Info("WARNING: SBD device is not a device file", "devicePath", devicePath)
+		logger.Info("WARNING: SBR device is not a device file", "devicePath", devicePath)
 	}
 
 	return nil
@@ -1664,7 +1664,7 @@ func getNodeNameFromEnv() string {
 // getNodeIDFromEnv gets the node ID from environment variables if not provided via flag
 func getNodeIDFromEnv() uint16 {
 	// Try various environment variable names
-	envVars := []string{"SBD_NODE_ID", "NODE_ID"}
+	envVars := []string{"SBR_NODE_ID", "NODE_ID"}
 
 	for _, envVar := range envVars {
 		if value := os.Getenv(envVar); value != "" {
@@ -1677,9 +1677,9 @@ func getNodeIDFromEnv() uint16 {
 	return DefaultNodeID
 }
 
-// getSBRTimeoutFromEnv gets the SBD timeout from environment variables if not provided via flag
+// getSBRTimeoutFromEnv gets the SBR timeout from environment variables if not provided via flag
 func getSBRTimeoutFromEnv() uint {
-	envVars := []string{"SBD_TIMEOUT_SECONDS", "SBD_TIMEOUT"}
+	envVars := []string{"SBR_TIMEOUT_SECONDS", "SBR_TIMEOUT"}
 
 	for _, envVar := range envVars {
 		if value := os.Getenv(envVar); value != "" {
@@ -1694,7 +1694,7 @@ func getSBRTimeoutFromEnv() uint {
 
 // getRebootMethodFromEnv gets the reboot method from environment variables if not provided via flag
 func getRebootMethodFromEnv() string {
-	envVars := []string{"SBD_REBOOT_METHOD", "REBOOT_METHOD"}
+	envVars := []string{"SBR_REBOOT_METHOD", "REBOOT_METHOD"}
 
 	for _, envVar := range envVars {
 		if value := os.Getenv(envVar); value != "" {
@@ -1876,7 +1876,7 @@ func (s *SBRAgent) readOwnSlotForFenceMessage() error {
 }
 
 // runPreflightChecks performs critical startup validation before entering main event loops
-// Returns success if EITHER watchdog is active OR SBD device is accessible (or both)
+// Returns success if EITHER watchdog is active OR SBR device is accessible (or both)
 func runPreflightChecks(watchdogPath, sbrDevicePath, nodeName string, nodeID uint16) error {
 	logger.Info("Running pre-flight checks",
 		"watchdogPath", watchdogPath,
@@ -1890,7 +1890,7 @@ func runPreflightChecks(watchdogPath, sbrDevicePath, nodeName string, nodeID uin
 		watchdogErr = checkWatchdogDevice(watchdogPath)
 	}
 
-	// Check SBD device accessibility
+	// Check SBR device accessibility
 	var sbrErr error
 	if sbrDevicePath != "" {
 		sbrErr = checkSBRDevice(sbrDevicePath, nodeID, nodeName)
@@ -1906,22 +1906,22 @@ func runPreflightChecks(watchdogPath, sbrDevicePath, nodeName string, nodeID uin
 		"nodeName", nodeName,
 		"nodeID", nodeID)
 
-	// SBD device is always required
+	// SBR device is always required
 	if sbrDevicePath == "" {
-		return fmt.Errorf("SBD device path cannot be empty")
+		return fmt.Errorf("SBR device path cannot be empty")
 	}
 
-	// Check if at least one critical component (watchdog OR SBD) is working
+	// Check if at least one critical component (watchdog OR SBR) is working
 	if watchdogErr == nil && sbrErr == nil {
 		logger.Info("All pre-flight checks passed successfully")
 		return nil
 	} else if watchdogErr == nil {
-		return fmt.Errorf("pre-flight checks failed: SBD device is not available")
+		return fmt.Errorf("pre-flight checks failed: SBR device is not available")
 	} else if sbrErr == nil {
 		return fmt.Errorf("pre-flight checks failed: watchdog device is not available")
 	} else {
 		return fmt.Errorf(
-			"pre-flight checks failed: both watchdog device and SBD device are inaccessible. Watchdog error: %v, SBD error: %v",
+			"pre-flight checks failed: both watchdog device and SBR device are inaccessible. Watchdog error: %v, SBR error: %v",
 			watchdogErr, sbrErr)
 	}
 }
@@ -1951,36 +1951,36 @@ func checkWatchdogDevice(watchdogPath string) error {
 	return nil
 }
 
-// checkSBRDevice verifies the SBD device exists and performs a minimal read/write test
+// checkSBRDevice verifies the SBR device exists and performs a minimal read/write test
 func checkSBRDevice(sbrDevicePath string, nodeID uint16, nodeName string) error {
-	logger.V(1).Info("Checking SBD device accessibility", "sbrDevicePath", sbrDevicePath, "nodeID", nodeID)
+	logger.V(1).Info("Checking SBR device accessibility", "sbrDevicePath", sbrDevicePath, "nodeID", nodeID)
 
-	// Check if the SBD device file exists
+	// Check if the SBR device file exists
 	if _, err := os.Stat(sbrDevicePath); err != nil {
 		if os.IsNotExist(err) {
-			return fmt.Errorf("SBD device does not exist: %s", sbrDevicePath)
+			return fmt.Errorf("SBR device does not exist: %s", sbrDevicePath)
 		}
-		return fmt.Errorf("failed to stat SBD device %s: %w", sbrDevicePath, err)
+		return fmt.Errorf("failed to stat SBR device %s: %w", sbrDevicePath, err)
 	}
 
-	// Try to open the SBD device using the blockdevice package
+	// Try to open the SBR device using the blockdevice package
 	device, err := blockdevice.Open(sbrDevicePath)
 	if err != nil {
-		return fmt.Errorf("failed to open SBD device %s: %w", sbrDevicePath, err)
+		return fmt.Errorf("failed to open SBR device %s: %w", sbrDevicePath, err)
 	}
 	defer func() {
 		if closeErr := device.Close(); closeErr != nil {
-			logger.Error(closeErr, "Failed to close SBD device during pre-flight check",
+			logger.Error(closeErr, "Failed to close SBR device during pre-flight check",
 				"sbrDevicePath", sbrDevicePath)
 		}
 	}()
 
 	// Perform minimal read/write test: write node ID to its slot and read it back
 	if err := performSBRReadWriteTest(device, nodeID, nodeName); err != nil {
-		return fmt.Errorf("SBD device read/write test failed: %w", err)
+		return fmt.Errorf("SBR device read/write test failed: %w", err)
 	}
 
-	logger.V(1).Info("SBD device read/write test completed successfully",
+	logger.V(1).Info("SBR device read/write test completed successfully",
 		"sbrDevicePath", sbrDevicePath,
 		"nodeID", nodeID)
 	return nil
@@ -1988,7 +1988,7 @@ func checkSBRDevice(sbrDevicePath string, nodeID uint16, nodeName string) error 
 
 // performSBRReadWriteTest writes the node ID to its slot and reads it back to verify functionality
 func performSBRReadWriteTest(device mocks.BlockDeviceInterface, nodeID uint16, nodeName string) error {
-	logger.V(1).Info("Performing SBD device read/write test", "nodeID", nodeID, "nodeName", nodeName)
+	logger.V(1).Info("Performing SBR device read/write test", "nodeID", nodeID, "nodeName", nodeName)
 
 	// Calculate slot offset for this node
 	slotOffset := int64(nodeID) * sbdprotocol.SBD_SLOT_SIZE
@@ -2007,27 +2007,27 @@ func performSBRReadWriteTest(device mocks.BlockDeviceInterface, nodeID uint16, n
 	// Write test message to the node's slot
 	n, err := device.WriteAt(testMsgBytes, slotOffset)
 	if err != nil {
-		return fmt.Errorf("failed to write test message to SBD device at offset %d: %w", slotOffset, err)
+		return fmt.Errorf("failed to write test message to SBR device at offset %d: %w", slotOffset, err)
 	}
 
 	if n != len(testMsgBytes) {
-		return fmt.Errorf("partial write to SBD device: wrote %d bytes, expected %d", n, len(testMsgBytes))
+		return fmt.Errorf("partial write to SBR device: wrote %d bytes, expected %d", n, len(testMsgBytes))
 	}
 
 	// Sync to ensure data is written to storage
 	if err := device.Sync(); err != nil {
-		return fmt.Errorf("failed to sync SBD device after test write: %w", err)
+		return fmt.Errorf("failed to sync SBR device after test write: %w", err)
 	}
 
 	// Read back the data to verify write was successful
 	readBuffer := make([]byte, len(testMsgBytes))
 	readN, err := device.ReadAt(readBuffer, slotOffset)
 	if err != nil {
-		return fmt.Errorf("failed to read test message from SBD device at offset %d: %w", slotOffset, err)
+		return fmt.Errorf("failed to read test message from SBR device at offset %d: %w", slotOffset, err)
 	}
 
 	if readN != len(testMsgBytes) {
-		return fmt.Errorf("partial read from SBD device: read %d bytes, expected %d", readN, len(testMsgBytes))
+		return fmt.Errorf("partial read from SBR device: read %d bytes, expected %d", readN, len(testMsgBytes))
 	}
 
 	// Verify the data matches what we wrote
@@ -2040,7 +2040,7 @@ func performSBRReadWriteTest(device mocks.BlockDeviceInterface, nodeID uint16, n
 	// Try to unmarshal the read data to ensure it's valid
 	readHeader, err := sbdprotocol.Unmarshal(readBuffer[:sbdprotocol.SBD_HEADER_SIZE])
 	if err != nil {
-		return fmt.Errorf("failed to unmarshal test message read from SBD device: %w", err)
+		return fmt.Errorf("failed to unmarshal test message read from SBR device: %w", err)
 	}
 
 	// Verify the header matches our expectations
@@ -2056,7 +2056,7 @@ func performSBRReadWriteTest(device mocks.BlockDeviceInterface, nodeID uint16, n
 		return fmt.Errorf("message type mismatch: expected %d, got %d", sbdprotocol.SBD_MSG_TYPE_HEARTBEAT, readHeader.Type)
 	}
 
-	logger.V(1).Info("SBD device read/write test successful",
+	logger.V(1).Info("SBR device read/write test successful",
 		"nodeID", nodeID,
 		"sequence", sequence,
 		"slotOffset", slotOffset,
@@ -2227,7 +2227,7 @@ func (s *SBRAgent) addSBRRemediationController() error {
 	reconciler := &controller.SBRRemediationReconciler{
 		Client:   s.controllerManager.GetClient(),
 		Scheme:   s.controllerManager.GetScheme(),
-		Recorder: s.controllerManager.GetEventRecorderFor("sbd-agent-remediation"),
+		Recorder: s.controllerManager.GetEventRecorderFor("sbr-agent-remediation"),
 	}
 
 	// Set up the reconciler with agent resources
@@ -2254,10 +2254,10 @@ func main() {
 		os.Exit(1)
 	}
 
-	logger.Info("SBD Agent starting", "version", "development")
+	logger.Info("SBR Agent starting", "version", "development")
 
 	// Log build information at startup
-	logger.Info("SBD Agent build information", "buildInfo", version.GetFormattedBuildInfo())
+	logger.Info("SBR Agent build information", "buildInfo", version.GetFormattedBuildInfo())
 
 	// Validate watchdog timing early using the configured values
 	if valid, warning := validateWatchdogTiming(*petInterval, *watchdogTimeout); !valid {
@@ -2301,11 +2301,11 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Determine SBD timeout
+	// Determine SBR timeout
 	sbrTimeoutValue := *sbrTimeoutSeconds
 	if sbrTimeoutValue == SBRDefaultTimeoutSec { // Check if it's still the default
 		sbrTimeoutValue = getSBRTimeoutFromEnv()
-		logger.Info("Using SBD timeout from environment or default",
+		logger.Info("Using SBR timeout from environment or default",
 			"sbrTimeoutSeconds", sbrTimeoutValue)
 	}
 
@@ -2338,12 +2338,12 @@ func main() {
 
 	// Validate required parameters
 	if *sbrDevice == "" {
-		logger.Error(nil, "SBD device is required - watchdog-only mode is no longer supported")
+		logger.Error(nil, "SBR device is required - watchdog-only mode is no longer supported")
 		os.Exit(1)
 	}
 
 	if err := validateSBRDevice(*sbrDevice); err != nil {
-		logger.Error(err, "SBD device validation failed", "sbrDevice", *sbrDevice)
+		logger.Error(err, "SBR device validation failed", "sbrDevice", *sbrDevice)
 		os.Exit(1)
 	}
 
@@ -2371,7 +2371,7 @@ func main() {
 		logger.Info("Kubernetes clients initialized successfully for fencing operations")
 	}
 
-	// Create SBD agent (hash mapping is always enabled)
+	// Create SBR agent (hash mapping is always enabled)
 	var wd mocks.WatchdogInterface
 	if *detectOnlyMode {
 		logger.Info("Detect-only mode: using no-op watchdog (watchdog disarmed, no remediation)")
@@ -2407,7 +2407,7 @@ func main() {
 		*detectOnlyMode,
 	)
 	if err != nil {
-		logger.Error(err, "Failed to create SBD agent",
+		logger.Error(err, "Failed to create SBR agent",
 			"watchdogPath", *watchdogPath,
 			"sbrDevice", *sbrDevice,
 			"nodeName", nodeNameValue,
@@ -2418,8 +2418,8 @@ func main() {
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 	if err := sbrAgent.RunUntilShutdown(sigChan); err != nil {
-		logger.Error(err, "Failed to run SBD agent or error during shutdown")
+		logger.Error(err, "Failed to run SBR agent or error during shutdown")
 		os.Exit(1)
 	}
-	logger.Info("SBD Agent shutdown complete")
+	logger.Info("SBR Agent shutdown complete")
 }

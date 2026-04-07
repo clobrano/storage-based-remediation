@@ -32,7 +32,7 @@ func TestSBRAgent_FailureTracking(t *testing.T) {
 		t.Errorf("Expected initial watchdog failure count 0, got %d", agent.watchdogFailureCount)
 	}
 	if agent.sbrFailureCount != 0 {
-		t.Errorf("Expected initial SBD failure count 0, got %d", agent.sbrFailureCount)
+		t.Errorf("Expected initial SBR failure count 0, got %d", agent.sbrFailureCount)
 	}
 	if agent.heartbeatFailureCount != 0 {
 		t.Errorf("Expected initial heartbeat failure count 0, got %d", agent.heartbeatFailureCount)
@@ -44,9 +44,9 @@ func TestSBRAgent_FailureTracking(t *testing.T) {
 		t.Errorf("Expected watchdog failure count 1, got %d", watchdogCount)
 	}
 
-	sbrCount := agent.incrementFailureCount("sbd")
+	sbrCount := agent.incrementFailureCount("sbr")
 	if sbrCount != 1 {
-		t.Errorf("Expected SBD failure count 1, got %d", sbrCount)
+		t.Errorf("Expected SBR failure count 1, got %d", sbrCount)
 	}
 
 	heartbeatCount := agent.incrementFailureCount("heartbeat")
@@ -60,9 +60,9 @@ func TestSBRAgent_FailureTracking(t *testing.T) {
 		t.Errorf("Expected watchdog failure count reset to 0, got %d", agent.watchdogFailureCount)
 	}
 
-	agent.resetFailureCount("sbd")
+	agent.resetFailureCount("sbr")
 	if agent.sbrFailureCount != 0 {
-		t.Errorf("Expected SBD failure count reset to 0, got %d", agent.sbrFailureCount)
+		t.Errorf("Expected SBR failure count reset to 0, got %d", agent.sbrFailureCount)
 	}
 
 	agent.resetFailureCount("heartbeat")
@@ -95,19 +95,19 @@ func TestSBRAgent_SelfFenceThreshold(t *testing.T) {
 		t.Error("Self-fence reason should not be empty")
 	}
 
-	// Reset and test SBD failures
+	// Reset and test SBR failures
 	agent.resetFailureCount("watchdog")
 	for i := 0; i < MaxConsecutiveFailures; i++ {
-		agent.incrementFailureCount("sbd")
+		agent.incrementFailureCount("sbr")
 	}
 
 	shouldFence, _ = agent.shouldTriggerSelfFence()
 	if !shouldFence {
-		t.Error("Should trigger self-fence for SBD failures")
+		t.Error("Should trigger self-fence for SBR failures")
 	}
 
 	// Reset and test heartbeat failures
-	agent.resetFailureCount("sbd")
+	agent.resetFailureCount("sbr")
 	for i := 0; i < MaxConsecutiveFailures; i++ {
 		agent.incrementFailureCount("heartbeat")
 	}
@@ -124,7 +124,7 @@ func TestSBRAgent_FailureCountReset(t *testing.T) {
 
 	// Increment some failure counts
 	agent.incrementFailureCount("watchdog")
-	agent.incrementFailureCount("sbd")
+	agent.incrementFailureCount("sbr")
 	agent.incrementFailureCount("heartbeat")
 
 	// Verify counts are non-zero
@@ -143,7 +143,7 @@ func TestSBRAgent_FailureCountReset(t *testing.T) {
 		t.Errorf("Expected watchdog failure count 1 after reset, got %d", agent.watchdogFailureCount)
 	}
 	if agent.sbrFailureCount != 0 {
-		t.Errorf("Expected SBD failure count 0 after reset, got %d", agent.sbrFailureCount)
+		t.Errorf("Expected SBR failure count 0 after reset, got %d", agent.sbrFailureCount)
 	}
 	if agent.heartbeatFailureCount != 0 {
 		t.Errorf("Expected heartbeat failure count 0 after reset, got %d", agent.heartbeatFailureCount)

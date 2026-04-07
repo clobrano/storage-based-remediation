@@ -110,7 +110,7 @@ func SetupKubernetesClients() (*TestClients, error) {
 	}
 	err = medik8sv1alpha1.AddToScheme(clientScheme)
 	if err != nil {
-		return nil, fmt.Errorf("failed to add SBD types to scheme: %w", err)
+		return nil, fmt.Errorf("failed to add SBR types to scheme: %w", err)
 	}
 
 	// Create controller-runtime client
@@ -254,7 +254,7 @@ func (tn *TestNamespace) CleanupStorageBasedRemediationConfig(sbrConfig *medik8s
 		pods := &corev1.PodList{}
 		err := tn.Clients.Client.List(tn.Clients.Context, pods,
 			client.InNamespace(tn.Name),
-			client.MatchingLabels{"sbdconfig": sbrConfig.Name})
+			client.MatchingLabels{"sbrconfig": sbrConfig.Name})
 		if err != nil {
 			GinkgoWriter.Printf("Failed to list pods: %v\n", err)
 			return -1
@@ -307,7 +307,7 @@ func (tn *TestNamespace) CleanupStorageBasedRemediationConfig(sbrConfig *medik8s
 		daemonSets := &appsv1.DaemonSetList{}
 		err := tn.Clients.Client.List(tn.Clients.Context, daemonSets,
 			client.InNamespace(tn.Name),
-			client.MatchingLabels{"sbdconfig": sbrConfig.Name})
+			client.MatchingLabels{"sbrconfig": sbrConfig.Name})
 		if err != nil {
 			return -1
 		}
@@ -328,7 +328,7 @@ func (tn *TestNamespace) NewPodStatusChecker(labels map[string]string) *PodStatu
 
 const (
 	// Default operator namespace
-	OperatorNamespaceName = "sbd-operator-system"
+	OperatorNamespaceName = "sbr-operator-system"
 )
 
 func (tn *TestNamespace) OperatorNamespace() *TestNamespace {
@@ -512,23 +512,23 @@ func (dc *DebugCollector) CollectControllerLogs(namespace, podName string) {
 	}
 }
 
-// CollectAgentLogs collects logs from all SBD agent pods
+// CollectAgentLogs collects logs from all SBR agent pods
 func (dc *DebugCollector) CollectAgentLogs(namespace string) {
 	defer func() {
 		if r := recover(); r != nil {
 			GinkgoWriter.Printf("CollectAgentLogs recovered from panic: %v\n", r)
 		}
 	}()
-	By("Fetching SBD agent pod logs")
+	By("Fetching SBR agent pod logs")
 
-	// Get all SBD agent pods
+	// Get all SBR agent pods
 	pods := &corev1.PodList{}
 	err := dc.Clients.Client.List(dc.Clients.Context, pods,
 		client.InNamespace(namespace),
-		client.MatchingLabels{"app": "sbd-agent"})
+		client.MatchingLabels{"app": "sbr-agent"})
 
 	if err != nil {
-		GinkgoWriter.Printf("Failed to list SBD agent pods: %s\n", err)
+		GinkgoWriter.Printf("Failed to list SBR agent pods: %s\n", err)
 		return
 	}
 
@@ -541,13 +541,13 @@ func (dc *DebugCollector) CollectAgentLogs(namespace string) {
 	}
 
 	if len(activePods) == 0 {
-		GinkgoWriter.Printf("No active SBD agent pods found\n")
+		GinkgoWriter.Printf("No active SBR agent pods found\n")
 		return
 	}
 
 	// Collect logs from each agent pod
 	for _, pod := range activePods {
-		GinkgoWriter.Printf("\n=== SBD Agent Pod: %s (Node: %s) ===\n", pod.Name, pod.Spec.NodeName)
+		GinkgoWriter.Printf("\n=== SBR Agent Pod: %s (Node: %s) ===\n", pod.Name, pod.Spec.NodeName)
 
 		req := dc.Clients.Clientset.CoreV1().Pods(namespace).GetLogs(pod.Name, &corev1.PodLogOptions{})
 		podLogs, err := req.Stream(dc.Clients.Context)
@@ -606,28 +606,28 @@ func (dc *DebugCollector) CollectKubernetesEvents(namespace string) {
 	}
 }
 
-// CollectStorageJobs collects SBD device initialization jobs for debugging
+// CollectStorageJobs collects SBR device initialization jobs for debugging
 func (dc *DebugCollector) CollectStorageJobs(namespace string) {
-	By("Fetching SBD device initialization jobs for debugging")
+	By("Fetching SBR device initialization jobs for debugging")
 
-	// Search for SBD device initialization jobs - these are created by the SBD operator controller
-	// and have specific labels: app.kubernetes.io/component=sbd-device-init
+	// Search for SBR device initialization jobs - these are created by the SBR operator controller
+	// and have specific labels: app.kubernetes.io/component=sbr-device-init
 	jobs := &batchv1.JobList{}
 	err := dc.Clients.Client.List(dc.Clients.Context, jobs,
 		client.InNamespace(namespace),
-		client.MatchingLabels{"app.kubernetes.io/component": "sbd-device-init"})
+		client.MatchingLabels{"app.kubernetes.io/component": "sbr-device-init"})
 
 	if err != nil {
-		GinkgoWriter.Printf("Failed to list SBD device initialization jobs in namespace %s: %v\n", namespace, err)
+		GinkgoWriter.Printf("Failed to list SBR device initialization jobs in namespace %s: %v\n", namespace, err)
 		return
 	}
 
 	if len(jobs.Items) == 0 {
-		GinkgoWriter.Printf("No SBD device initialization jobs found in namespace %s\n", namespace)
+		GinkgoWriter.Printf("No SBR device initialization jobs found in namespace %s\n", namespace)
 		return
 	}
 
-	GinkgoWriter.Printf("\n=== SBD Device Initialization Jobs in namespace %s ===\n", namespace)
+	GinkgoWriter.Printf("\n=== SBR Device Initialization Jobs in namespace %s ===\n", namespace)
 
 	for _, job := range jobs.Items {
 		// Collect job definition
@@ -637,15 +637,15 @@ func (dc *DebugCollector) CollectStorageJobs(namespace string) {
 			if f, fileErr := os.Create(jobFileName); fileErr == nil {
 				defer func() { _ = f.Close() }()
 				_, _ = f.Write(jobYAML)
-				GinkgoWriter.Printf("SBD device init job spec for %s saved to %s\n", job.Name, jobFileName)
+				GinkgoWriter.Printf("SBR device init job spec for %s saved to %s\n", job.Name, jobFileName)
 			} else {
-				GinkgoWriter.Printf("Failed to write SBD device init job spec to file %s: %s\n", jobFileName, fileErr)
-				GinkgoWriter.Printf("SBD device init job %s spec:\n%s\n", job.Name, string(jobYAML))
+				GinkgoWriter.Printf("Failed to write SBR device init job spec to file %s: %s\n", jobFileName, fileErr)
+				GinkgoWriter.Printf("SBR device init job %s spec:\n%s\n", job.Name, string(jobYAML))
 			}
 		}
 
 		// Display job status
-		GinkgoWriter.Printf("SBD device init job %s: Active=%d, Succeeded=%d, Failed=%d\n",
+		GinkgoWriter.Printf("SBR device init job %s: Active=%d, Succeeded=%d, Failed=%d\n",
 			job.Name, job.Status.Active, job.Status.Succeeded, job.Status.Failed)
 
 		// Display job conditions for more detailed status
@@ -716,12 +716,12 @@ func (dc *DebugCollector) collectJobPodLogs(namespace, jobName string) {
 	}
 
 	if len(pods.Items) == 0 {
-		GinkgoWriter.Printf("No pods found for SBD device init job %s\n", jobName)
+		GinkgoWriter.Printf("No pods found for SBR device init job %s\n", jobName)
 		return
 	}
 
 	for _, pod := range pods.Items {
-		GinkgoWriter.Printf("Collecting logs from SBD device init job pod: %s\n", pod.Name)
+		GinkgoWriter.Printf("Collecting logs from SBR device init job pod: %s\n", pod.Name)
 
 		// Collect pod definition
 		podYAML, err := yaml.Marshal(pod)
@@ -730,9 +730,9 @@ func (dc *DebugCollector) collectJobPodLogs(namespace, jobName string) {
 			if f, fileErr := os.Create(podFileName); fileErr == nil {
 				defer func() { _ = f.Close() }()
 				_, _ = f.Write(podYAML)
-				GinkgoWriter.Printf("SBD device init pod spec for %s saved to %s\n", pod.Name, podFileName)
+				GinkgoWriter.Printf("SBR device init pod spec for %s saved to %s\n", pod.Name, podFileName)
 			} else {
-				GinkgoWriter.Printf("Failed to write SBD device init pod spec to file %s: %s\n", podFileName, fileErr)
+				GinkgoWriter.Printf("Failed to write SBR device init pod spec to file %s: %s\n", podFileName, fileErr)
 			}
 		}
 
@@ -748,18 +748,18 @@ func (dc *DebugCollector) collectJobPodLogs(namespace, jobName string) {
 				if f, fileErr := os.Create(logFileName); fileErr == nil {
 					defer func() { _ = f.Close() }()
 					_, _ = f.Write(buf.Bytes())
-					GinkgoWriter.Printf("SBD device init pod logs for %s saved to %s\n", pod.Name, logFileName)
+					GinkgoWriter.Printf("SBR device init pod logs for %s saved to %s\n", pod.Name, logFileName)
 				} else {
-					GinkgoWriter.Printf("Failed to write SBD device init pod logs to file %s: %s\n", logFileName, fileErr)
-					GinkgoWriter.Printf("SBD device init pod %s logs:\n%s\n", pod.Name, buf.String())
+					GinkgoWriter.Printf("Failed to write SBR device init pod logs to file %s: %s\n", logFileName, fileErr)
+					GinkgoWriter.Printf("SBR device init pod %s logs:\n%s\n", pod.Name, buf.String())
 				}
 			} else {
-				GinkgoWriter.Printf("Failed to get logs from SBD device init pod %s: %s\n", pod.Name, err)
+				GinkgoWriter.Printf("Failed to get logs from SBR device init pod %s: %s\n", pod.Name, err)
 			}
 		}
 
 		// Display pod status
-		GinkgoWriter.Printf("SBD device init pod %s: Phase=%s, Node=%s\n",
+		GinkgoWriter.Printf("SBR device init pod %s: Phase=%s, Node=%s\n",
 			pod.Name, pod.Status.Phase, pod.Spec.NodeName)
 
 		// Display pod conditions for detailed status
@@ -773,11 +773,11 @@ func (dc *DebugCollector) collectJobPodLogs(namespace, jobName string) {
 	}
 }
 
-// CollectSBDRemediations collects StorageBasedRemediation CRs
+// CollectSBRRemediations collects StorageBasedRemediation CRs
 //
 //nolint:dupl // similar to CollectStorageBasedRemediationConfigs; kept distinct for clarity
-func (dc *DebugCollector) CollectSBDRemediations(namespace string) {
-	By(fmt.Sprintf("Fetching SBDRemediations in namespace %s", namespace))
+func (dc *DebugCollector) CollectSBRRemediations(namespace string) {
+	By(fmt.Sprintf("Fetching SBRRemediations in namespace %s", namespace))
 	remediations := &medik8sv1alpha1.StorageBasedRemediationList{}
 	err := dc.Clients.Client.List(dc.Clients.Context, remediations, client.InNamespace(namespace))
 	if err == nil {
@@ -800,7 +800,7 @@ func (dc *DebugCollector) CollectSBDRemediations(namespace string) {
 
 // CollectStorageBasedRemediationConfigs collects StorageBasedRemediationConfig CRs
 //
-//nolint:dupl // similar to CollectSBDRemediations; kept distinct for clarity
+//nolint:dupl // similar to CollectSBRRemediations; kept distinct for clarity
 func (dc *DebugCollector) CollectStorageBasedRemediationConfigs(namespace string) {
 	By(fmt.Sprintf("Fetching StorageBasedRemediationConfigs in namespace %s", namespace))
 	configs := &medik8sv1alpha1.StorageBasedRemediationConfigList{}
@@ -1211,13 +1211,13 @@ func (dsc *DaemonSetChecker) CheckDaemonSetArgs(ds *appsv1.DaemonSet, expectedAr
 	return nil
 }
 
-// SBRAgentValidator provides comprehensive validation for SBD agent deployments
+// SBRAgentValidator provides comprehensive validation for SBR agent deployments
 type SBRAgentValidator struct {
 	TestNS  *TestNamespace
 	Clients *TestClients
 }
 
-// NewSBRAgentValidator creates a new SBD agent validator
+// NewSBRAgentValidator creates a new SBR agent validator
 func (tn *TestNamespace) NewSBRAgentValidator() *SBRAgentValidator {
 	return &SBRAgentValidator{
 		TestNS:  tn,
@@ -1252,11 +1252,11 @@ func DefaultValidateAgentDeploymentOptions(sbrConfigName string) ValidateAgentDe
 	}
 }
 
-// ValidateAgentDeployment performs comprehensive validation of SBD agent deployment
+// ValidateAgentDeployment performs comprehensive validation of SBR agent deployment
 func (sav *SBRAgentValidator) ValidateAgentDeployment(opts ValidateAgentDeploymentOptions) error {
-	By("waiting for SBD agent DaemonSet to be created")
+	By("waiting for SBR agent DaemonSet to be created")
 	dsChecker := sav.TestNS.NewDaemonSetChecker()
-	daemonSet, err := dsChecker.WaitForDaemonSet(map[string]string{"sbdconfig": opts.StorageBasedRemediationConfigName}, opts.DaemonSetTimeout)
+	daemonSet, err := dsChecker.WaitForDaemonSet(map[string]string{"sbrconfig": opts.StorageBasedRemediationConfigName}, opts.DaemonSetTimeout)
 	if err != nil {
 		return fmt.Errorf("failed to wait for DaemonSet: %w", err)
 	}
@@ -1269,18 +1269,18 @@ func (sav *SBRAgentValidator) ValidateAgentDeployment(opts ValidateAgentDeployme
 		return fmt.Errorf("DaemonSet configuration validation failed: %w", err)
 	}
 
-	By("waiting for SBD agent pods to become ready")
-	podChecker := sav.TestNS.NewPodStatusChecker(map[string]string{"sbdconfig": opts.StorageBasedRemediationConfigName})
+	By("waiting for SBR agent pods to become ready")
+	podChecker := sav.TestNS.NewPodStatusChecker(map[string]string{"sbrconfig": opts.StorageBasedRemediationConfigName})
 	err = podChecker.WaitForPodsReady(opts.MinReadyPods, opts.PodReadyTimeout)
 	if err != nil {
 		return fmt.Errorf("pods failed to become ready: %w", err)
 	}
 
-	By("checking if SBD agent pods exist and examining their status")
+	By("checking if SBR agent pods exist and examining their status")
 	pods := &corev1.PodList{}
 	err = sav.Clients.Client.List(sav.Clients.Context, pods,
 		client.InNamespace(sav.TestNS.Name),
-		client.MatchingLabels{"sbdconfig": opts.StorageBasedRemediationConfigName})
+		client.MatchingLabels{"sbrconfig": opts.StorageBasedRemediationConfigName})
 	if err != nil {
 		return fmt.Errorf("failed to list pods: %w", err)
 	}
@@ -1290,7 +1290,7 @@ func (sav *SBRAgentValidator) ValidateAgentDeployment(opts ValidateAgentDeployme
 
 	// Check at least one pod for logs (but don't require specific log messages in test environment)
 	podName := pods.Items[0].Name
-	By(fmt.Sprintf("examining logs of SBD agent pod %s (may show watchdog hardware limitations)", podName))
+	By(fmt.Sprintf("examining logs of SBR agent pod %s (may show watchdog hardware limitations)", podName))
 
 	// Try to get logs but don't fail the test if pod isn't ready or logs are empty
 	Eventually(func() string {
@@ -1310,7 +1310,7 @@ func (sav *SBRAgentValidator) ValidateAgentDeployment(opts ValidateAgentDeployme
 		ContainSubstring("Watchdog pet successful"),
 		ContainSubstring("falling back to write-based keep-alive"),
 		ContainSubstring("Starting watchdog loop"),
-		ContainSubstring("SBD Agent started"),
+		ContainSubstring("SBR Agent started"),
 		ContainSubstring("ERROR_GETTING_LOGS"),
 		ContainSubstring("NO_LOGS_YET"),
 	))
@@ -1326,7 +1326,7 @@ func (sav *SBRAgentValidator) ValidateAgentDeployment(opts ValidateAgentDeployme
 		//	"level\":\"error", #reduce flakiness
 		"Error",
 		"ERROR",
-		"Failed to start SBD agent",
+		"Failed to start SBR agent",
 		"failed to pet watchdog",
 		"watchdog device is not open",
 		"Failed to unmarshal message from own slot",
@@ -1344,12 +1344,12 @@ func (sav *SBRAgentValidator) ValidateAgentDeployment(opts ValidateAgentDeployme
 		}
 	}
 
-	By("verifying SBD agent started successfully")
+	By("verifying SBR agent started successfully")
 	successStrings := []string{
-		"Starting SBD Agent controller manager",
+		"Starting SBR Agent controller manager",
 		"Starting watchdog loop",
 		"Starting peer monitor loop",
-		"Starting SBD heartbeat loop",
+		"Starting SBR heartbeat loop",
 		"Successfully acquired file lock on node mapping file",
 		"All pre-flight checks passed successfully",
 		"StorageBasedRemediation controller added to manager successfully",
@@ -1367,24 +1367,24 @@ func (sav *SBRAgentValidator) ValidateAgentDeployment(opts ValidateAgentDeployme
 	return nil
 }
 
-// ValidateNoNodeReboots performs focused validation to ensure SBD agents don't cause node reboots
+// ValidateNoNodeReboots performs focused validation to ensure SBR agents don't cause node reboots
 func (sav *SBRAgentValidator) ValidateNoNodeReboots(opts ValidateAgentDeploymentOptions) error {
-	By("capturing initial node state before SBD agent deployment")
+	By("capturing initial node state before SBR agent deployment")
 	nodeChecker := sav.Clients.NewNodeStabilityChecker()
 	err := nodeChecker.captureInitialNodeState()
 	if err != nil {
 		return fmt.Errorf("failed to capture initial node state: %w", err)
 	}
 
-	By("waiting for SBD agent DaemonSet to be created")
+	By("waiting for SBR agent DaemonSet to be created")
 	dsChecker := sav.TestNS.NewDaemonSetChecker()
-	_, err = dsChecker.WaitForDaemonSet(map[string]string{"sbdconfig": opts.StorageBasedRemediationConfigName}, opts.DaemonSetTimeout)
+	_, err = dsChecker.WaitForDaemonSet(map[string]string{"sbrconfig": opts.StorageBasedRemediationConfigName}, opts.DaemonSetTimeout)
 	if err != nil {
 		return fmt.Errorf("failed to wait for DaemonSet: %w", err)
 	}
 
-	By("waiting for SBD agent pods to become ready")
-	podChecker := sav.TestNS.NewPodStatusChecker(map[string]string{"sbdconfig": opts.StorageBasedRemediationConfigName})
+	By("waiting for SBR agent pods to become ready")
+	podChecker := sav.TestNS.NewPodStatusChecker(map[string]string{"sbrconfig": opts.StorageBasedRemediationConfigName})
 	err = podChecker.WaitForPodsReady(opts.MinReadyPods, opts.PodReadyTimeout)
 	if err != nil {
 		return fmt.Errorf("pods failed to become ready: %w", err)
@@ -1393,7 +1393,7 @@ func (sav *SBRAgentValidator) ValidateNoNodeReboots(opts ValidateAgentDeployment
 	By("continuously monitoring for node reboots during agent operation")
 	err = nodeChecker.WaitForNoReboots(opts.NodeStableTime)
 	if err != nil {
-		return fmt.Errorf("node reboot detected during SBD agent operation: %w", err)
+		return fmt.Errorf("node reboot detected during SBR agent operation: %w", err)
 	}
 
 	By("performing final reboot check after monitoring period")
@@ -1402,15 +1402,15 @@ func (sav *SBRAgentValidator) ValidateNoNodeReboots(opts ValidateAgentDeployment
 		return fmt.Errorf("failed final reboot check: %w", err)
 	}
 	if hasReboots {
-		return fmt.Errorf("nodes rebooted during SBD agent deployment: %v", rebootedNodes)
+		return fmt.Errorf("nodes rebooted during SBR agent deployment: %v", rebootedNodes)
 	}
 
-	GinkgoWriter.Printf("SUCCESS: No node reboots detected during SBD agent deployment and operation\n")
+	GinkgoWriter.Printf("SUCCESS: No node reboots detected during SBR agent deployment and operation\n")
 	return nil
 }
 
 func CleanupStorageBasedRemediationConfigs(testNamespace *TestNamespace) {
-	By("Cleaning up SBD configuration and waiting for agents to terminate")
+	By("Cleaning up SBR configuration and waiting for agents to terminate")
 	// Clean up all StorageBasedRemediationConfigs in the test namespace
 	sbrConfigs := &medik8sv1alpha1.StorageBasedRemediationConfigList{}
 	err := testNamespace.Clients.Client.List(
@@ -1425,7 +1425,7 @@ func CleanupStorageBasedRemediationConfigs(testNamespace *TestNamespace) {
 	}
 
 	By("Cleaning up StorageBasedRemediation CRs to prevent namespace deletion issues")
-	// Clean up all SBDRemediations in the test namespace
+	// Clean up all SBRRemediations in the test namespace
 	sbrRemediations := &medik8sv1alpha1.StorageBasedRemediationList{}
 	err = testNamespace.Clients.Client.List(
 		testNamespace.Clients.Context, sbrRemediations, client.InNamespace(testNamespace.Name))
@@ -1501,28 +1501,28 @@ func SuiteSetup(prefix string) (*TestNamespace, error) {
 	}
 
 	By("Verifying CRDs are installed")
-	// Check for SBD CRDs by looking for API resources in the storage-based-remediation.medik8s.io group
+	// Check for SBR CRDs by looking for API resources in the storage-based-remediation.medik8s.io group
 	apiResourceList, err := testClients.Clientset.Discovery().ServerResourcesForGroupVersion("storage-based-remediation.medik8s.io/v1alpha1")
 	Expect(err).NotTo(HaveOccurred(), "Failed to get API resources for storage-based-remediation.medik8s.io/v1alpha1")
 
-	var foundStorageBasedRemediationConfig, foundSBDRemediation bool
+	var foundStorageBasedRemediationConfig, foundSBRRemediation bool
 	for _, resource := range apiResourceList.APIResources {
 		if resource.Kind == "StorageBasedRemediationConfig" {
 			foundStorageBasedRemediationConfig = true
 		}
 		if resource.Kind == "StorageBasedRemediation" {
-			foundSBDRemediation = true
+			foundSBRRemediation = true
 		}
 	}
 	Expect(foundStorageBasedRemediationConfig).To(BeTrue(), "Expected StorageBasedRemediationConfig CRD to be installed (should be done by Makefile setup)")
-	Expect(foundSBDRemediation).To(BeTrue(),
+	Expect(foundSBRRemediation).To(BeTrue(),
 		"Expected StorageBasedRemediation CRD to be installed (should be done by Makefile setup)")
 
 	By("verifying the controller-manager is deployed")
 	deployment := &appsv1.Deployment{}
 	err = testClients.Client.Get(testClients.Context, client.ObjectKey{
-		Name:      "sbd-operator-controller-manager",
-		Namespace: "sbd-operator-system",
+		Name:      "sbr-operator-controller-manager",
+		Namespace: "sbr-operator-system",
 	}, deployment)
 	Expect(err).NotTo(HaveOccurred(),
 		"Expected controller-manager to be deployed (should be done by Makefile setup)")
@@ -1530,7 +1530,7 @@ func SuiteSetup(prefix string) (*TestNamespace, error) {
 	// Confirm the operator is running
 	By("confirming the operator is running")
 	Eventually(func() bool {
-		podList, err := testClients.Clientset.CoreV1().Pods("sbd-operator-system").List(testClients.Context,
+		podList, err := testClients.Clientset.CoreV1().Pods("sbr-operator-system").List(testClients.Context,
 			metav1.ListOptions{
 				LabelSelector: "control-plane=controller-manager",
 			})
@@ -1551,8 +1551,8 @@ func DescribeEnvironment(testClients *TestClients, testNamespace *TestNamespace)
 	isControllerNamespace := false
 	isAgentNamespace := false
 
-	// Heuristic: "sbd-operator-system" is the default controller namespace
-	if testNamespace.Name == "sbd-operator-system" {
+	// Heuristic: "sbr-operator-system" is the default controller namespace
+	if testNamespace.Name == "sbr-operator-system" {
 		isControllerNamespace = true
 	} else {
 		// Check for presence of controller-manager pods
@@ -1565,11 +1565,11 @@ func DescribeEnvironment(testClients *TestClients, testNamespace *TestNamespace)
 		}
 	}
 
-	// Heuristic: agent pods are labeled "app=sbd-agent"
+	// Heuristic: agent pods are labeled "app=sbr-agent"
 	agentPods := &corev1.PodList{}
 	err := testClients.Client.List(testClients.Context, agentPods,
 		client.InNamespace(testNamespace.Name),
-		client.MatchingLabels{"app": "sbd-agent"})
+		client.MatchingLabels{"app": "sbr-agent"})
 	if err == nil && len(agentPods.Items) > 0 {
 		isAgentNamespace = true
 	}
@@ -1645,16 +1645,16 @@ func DescribeEnvironment(testClients *TestClients, testNamespace *TestNamespace)
 		}
 
 		debugCollector.CollectStorageBasedRemediationConfigs(testNamespace.Name)
-		debugCollector.CollectSBDRemediations(testNamespace.Name)
+		debugCollector.CollectSBRRemediations(testNamespace.Name)
 
-		By("validating that SBD agent pods are running as expected")
+		By("validating that SBR agent pods are running as expected")
 		verifyAgentsUp := func(g Gomega) {
-			// Get SBD agent pods
+			// Get SBR agent pods
 			pods := &corev1.PodList{}
 			err := testClients.Client.List(testClients.Context, pods,
 				client.InNamespace(testNamespace.Name),
-				client.MatchingLabels{"app": "sbd-agent"})
-			g.Expect(err).NotTo(HaveOccurred(), "Failed to retrieve SBD agent pod information")
+				client.MatchingLabels{"app": "sbr-agent"})
+			g.Expect(err).NotTo(HaveOccurred(), "Failed to retrieve SBR agent pod information")
 
 			// Filter out pods that are being deleted
 			var activePods []corev1.Pod
@@ -1663,12 +1663,12 @@ func DescribeEnvironment(testClients *TestClients, testNamespace *TestNamespace)
 					activePods = append(activePods, pod)
 				}
 			}
-			g.Expect(activePods).ToNot(BeEmpty(), "expected at least 1 SBD agent pod running")
+			g.Expect(activePods).ToNot(BeEmpty(), "expected at least 1 SBR agent pod running")
 
 			// Validate each agent pod's status
 			for _, pod := range activePods {
-				g.Expect(pod.Name).To(ContainSubstring("sbd-agent"))
-				g.Expect(pod.Status.Phase).To(Equal(corev1.PodRunning), "Incorrect SBD agent pod status")
+				g.Expect(pod.Name).To(ContainSubstring("sbr-agent"))
+				g.Expect(pod.Status.Phase).To(Equal(corev1.PodRunning), "Incorrect SBR agent pod status")
 			}
 
 			agentPodName := activePods[0].Name
@@ -1684,7 +1684,7 @@ func DescribeEnvironment(testClients *TestClients, testNamespace *TestNamespace)
 			err = testClients.SBRDeviceSummary(agentPodName, testNamespace.Name,
 				fmt.Sprintf("%s/heartbeat-device.txt", testNamespace.ArtifactsDir))
 			if err != nil {
-				GinkgoWriter.Printf("Failed to get SBD device summary: %s\n", err)
+				GinkgoWriter.Printf("Failed to get SBR device summary: %s\n", err)
 			}
 
 			By("Extracting the node mapping file contents from the agent pod")

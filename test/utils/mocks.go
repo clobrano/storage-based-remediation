@@ -33,7 +33,7 @@ func NewFakeClient(tb testing.TB) rtclient.Client {
 	return rtfake.NewClientBuilder().Build()
 }
 
-// TestAgentOptions contains options for creating test SBD agents
+// TestAgentOptions contains options for creating test SBR agents
 type TestAgentOptions struct {
 	NodeName           string
 	MetricsPort        int
@@ -49,7 +49,7 @@ type TestAgentOptions struct {
 	Logger             logr.Logger
 }
 
-// DefaultTestAgentOptions returns default options for test SBD agents
+// DefaultTestAgentOptions returns default options for test SBR agents
 func DefaultTestAgentOptions() TestAgentOptions {
 	return TestAgentOptions{
 		NodeName:           "test-node",

@@ -24,16 +24,16 @@ import (
 
 func main() {
 	if len(os.Args) > 1 && os.Args[1] == "--help" {
-		fmt.Printf("Usage: %s <namespace> [sbdconfig-name]\n\n", os.Args[0])
-		fmt.Println("This tool validates SBD device file consistency across all agent pods.")
+		fmt.Printf("Usage: %s <namespace> [sbrconfig-name]\n\n", os.Args[0])
+		fmt.Println("This tool validates SBR device file consistency across all agent pods.")
 		fmt.Println()
 		fmt.Println("Examples:")
-		fmt.Printf("  %s default                    # Check all SBD agents in default namespace\n", os.Args[0])
-		fmt.Printf("  %s default test-sbd-config   # Check agents for specific StorageBasedRemediationConfig\n", os.Args[0])
+		fmt.Printf("  %s default                    # Check all SBR agents in default namespace\n", os.Args[0])
+		fmt.Printf("  %s default test-sbr-config   # Check agents for specific StorageBasedRemediationConfig\n", os.Args[0])
 		fmt.Println()
 		fmt.Println("The tool performs the following validations:")
-		fmt.Println("  • Discovers all SBD agent pods in the namespace")
-		fmt.Println("  • Extracts SBD device files from each pod")
+		fmt.Println("  • Discovers all SBR agent pods in the namespace")
+		fmt.Println("  • Extracts SBR device files from each pod")
 		fmt.Println("  • Compares checksums across all pods")
 		fmt.Println("  • Tests for real-time consistency and cache coherency")
 		fmt.Println("  • Analyzes node mapping and slot assignments")
@@ -51,7 +51,7 @@ func main() {
 		sbrConfigName = os.Args[2]
 	}
 
-	fmt.Printf("🔍 SBD Device Consistency Validator\n")
+	fmt.Printf("🔍 SBR Device Consistency Validator\n")
 	fmt.Printf("===================================\n")
 	if namespace != "" {
 		fmt.Printf("Namespace: %s\n", namespace)
@@ -88,18 +88,18 @@ func main() {
 		fmt.Printf("Using StorageBasedRemediationConfig: %s in namespace %s\n", sbrConfigName, namespace)
 	}
 
-	// Discover SBD agent pods
-	fmt.Printf("🚀 Discovering SBD agent pods...\n")
+	// Discover SBR agent pods
+	fmt.Printf("🚀 Discovering SBR agent pods...\n")
 	pods, err := getSBRAgentPods(clientset, namespace, sbrConfigName)
 	if err != nil {
-		log.Fatalf("Failed to get SBD agent pods: %v", err)
+		log.Fatalf("Failed to get SBR agent pods: %v", err)
 	}
 
 	if len(pods) == 0 {
-		log.Fatalf("No SBD agent pods found in namespace %s", namespace)
+		log.Fatalf("No SBR agent pods found in namespace %s", namespace)
 	}
 
-	fmt.Printf("Found %d SBD agent pods:\n", len(pods))
+	fmt.Printf("Found %d SBR agent pods:\n", len(pods))
 	for i, pod := range pods {
 		fmt.Printf("  %d. %s\n", i+1, pod)
 	}
@@ -152,9 +152,9 @@ func main() {
 			fmt.Printf("Failed to get node mapping: %v\n", err)
 		}
 
-		fmt.Printf("SBD Device Slots:\n")
+		fmt.Printf("SBR Device Slots:\n")
 		if err := testClients.SBRDeviceSummary(podName, namespace, ""); err != nil {
-			fmt.Printf("Failed to get SBD device info: %v\n", err)
+			fmt.Printf("Failed to get SBR device info: %v\n", err)
 		}
 
 		fmt.Printf("Fence Device Slots:\n")
@@ -168,7 +168,7 @@ func main() {
 	// Phase 3: Timed consistency check
 	fmt.Printf("📊 Phase 3: Timed Consistency Check\n")
 	fmt.Printf("===================================\n")
-	fmt.Printf("Monitoring SBD device changes over 30 seconds...\n\n")
+	fmt.Printf("Monitoring SBR device changes over 30 seconds...\n\n")
 
 	timedConsistencyCheck(pods, namespace)
 
@@ -183,16 +183,16 @@ func main() {
 		}
 	}
 
-	fmt.Printf("\n🎉 SBD Consistency Analysis Complete!\n")
+	fmt.Printf("\n🎉 SBR Consistency Analysis Complete!\n")
 	fmt.Printf("=====================================\n")
 	fmt.Printf("📝 Summary:\n")
-	fmt.Printf("• Analyzed %d SBD agent pods\n", len(pods))
+	fmt.Printf("• Analyzed %d SBR agent pods\n", len(pods))
 	fmt.Printf("• Checked device file consistency across all pods\n")
-	fmt.Printf("• Performed real-time monitoring of SBD operations\n")
+	fmt.Printf("• Performed real-time monitoring of SBR operations\n")
 	fmt.Printf("• Validated storage configuration and cache coherency\n")
 	fmt.Printf("\n💡 Next Steps:\n")
 	fmt.Printf("• Review any consistency warnings above\n")
-	fmt.Printf("• Monitor SBD agent logs for coordination issues\n")
+	fmt.Printf("• Monitor SBR agent logs for coordination issues\n")
 	fmt.Printf("• Ensure all nodes can see each other's heartbeats\n")
 }
 
@@ -248,13 +248,13 @@ func getStorageBasedRemediationConfigs(namespace string) ([]string, error) {
 	return names, nil
 }
 
-// getSBRAgentPods discovers SBD agent pods in the given namespace
+// getSBRAgentPods discovers SBR agent pods in the given namespace
 func getSBRAgentPods(clientset *kubernetes.Clientset, namespace, sbrConfigName string) ([]string, error) {
 	var labelSelector string
 	if sbrConfigName != "" {
-		labelSelector = fmt.Sprintf("sbdconfig=%s", sbrConfigName)
+		labelSelector = fmt.Sprintf("sbrconfig=%s", sbrConfigName)
 	} else {
-		labelSelector = "app.kubernetes.io/name=sbd-agent"
+		labelSelector = "app.kubernetes.io/name=sbr-agent"
 	}
 
 	pods, err := clientset.CoreV1().Pods(namespace).List(context.TODO(), metav1.ListOptions{
@@ -274,7 +274,7 @@ func getSBRAgentPods(clientset *kubernetes.Clientset, namespace, sbrConfigName s
 	return podNames, nil
 }
 
-// getFileChecksum gets the checksum of a specific SBD file from a pod
+// getFileChecksum gets the checksum of a specific SBR file from a pod
 func getFileChecksum(podName, namespace, fileType string) (string, error) {
 	var filePath string
 	switch fileType {
