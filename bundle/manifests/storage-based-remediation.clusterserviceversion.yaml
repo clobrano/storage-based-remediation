@@ -4,22 +4,24 @@ metadata:
   annotations:
     alm-examples: '[]'
     capabilities: Basic Install
-    createdAt: "2026-04-07T14:16:03Z"
+    createdAt: "2026-04-08T10:15:09Z"
     operators.operatorframework.io/builder: operator-sdk-v1.33.0
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v4
-    containerImage: quay.io/clobrano/sbd-operator:latest
-  name: sbd-operator.v0.0.1
+    containerImage: quay.io/clobrano/storage-based-remediation:latest
+  name: storage-based-remediation.v0.0.1
   namespace: placeholder
 spec:
   apiservicedefinitions: {}
   customresourcedefinitions:
     owned:
-      - description: SBDConfig is the Schema for the sbdconfigs API.
-        displayName: SBDConfig
-        kind: SBDConfig
-        name: sbdconfigs.storage-based-remediation.medik8s.io
+      - description: StorageBasedRemediationConfig is the Schema for the storagebasedremediationconfigs API.
+        displayName: StorageBasedRemediationConfig
+        kind: StorageBasedRemediationConfig
+        name: storagebasedremediationconfigs.storage-based-remediation.medik8s.io
         version: v1alpha1
-      - kind: StorageBasedRemediation
+      - description: StorageBasedRemediation is the Schema for the storagebasedremediations API.
+        displayName: StorageBasedRemediation
+        kind: StorageBasedRemediation
         name: storagebasedremediations.storage-based-remediation.medik8s.io
         version: v1alpha1
       - description: StorageBasedRemediationTemplate is the Schema for the storagebasedremediationtemplates API.
@@ -28,7 +30,7 @@ spec:
         name: storagebasedremediationtemplates.storage-based-remediation.medik8s.io
         version: v1alpha1
   description: TBD
-  displayName: SBD
+  displayName: Storage Based Remediation
   icon:
     - base64data: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/wwAAgMBgS+0L8sAAAAASUVORK5CYII="
       mediatype: "image/png"
@@ -166,7 +168,7 @@ spec:
             - apiGroups:
                 - storage-based-remediation.medik8s.io
               resources:
-                - sbdconfigs
+                - storagebasedremediationconfigs
                 - storagebasedremediations
               verbs:
                 - create
@@ -179,14 +181,14 @@ spec:
             - apiGroups:
                 - storage-based-remediation.medik8s.io
               resources:
-                - sbdconfigs/finalizers
+                - storagebasedremediationconfigs/finalizers
                 - storagebasedremediations/finalizers
               verbs:
                 - update
             - apiGroups:
                 - storage-based-remediation.medik8s.io
               resources:
-                - sbdconfigs/status
+                - storagebasedremediationconfigs/status
                 - storagebasedremediations/status
               verbs:
                 - get
@@ -200,18 +202,18 @@ spec:
                 - get
                 - list
                 - watch
-          serviceAccountName: sbd-operator-controller-manager
+          serviceAccountName: sbr-operator-controller-manager
       deployments:
         - label:
             app.kubernetes.io/managed-by: kustomize
-            app.kubernetes.io/name: sbd-operator
+            app.kubernetes.io/name: sbr-operator
             control-plane: controller-manager
-          name: sbd-operator-controller-manager
+          name: sbr-operator-controller-manager
           spec:
             replicas: 1
             selector:
               matchLabels:
-                app.kubernetes.io/name: sbd-operator
+                app.kubernetes.io/name: sbr-operator
                 control-plane: controller-manager
             strategy: {}
             template:
@@ -219,7 +221,7 @@ spec:
                 annotations:
                   kubectl.kubernetes.io/default-container: manager
                 labels:
-                  app.kubernetes.io/name: sbd-operator
+                  app.kubernetes.io/name: sbr-operator
                   control-plane: controller-manager
               spec:
                 containers:
@@ -239,7 +241,7 @@ spec:
                         valueFrom:
                           fieldRef:
                             fieldPath: metadata.namespace
-                    image: quay.io/clobrano/sbd-operator:latest
+                    image: quay.io/clobrano/storage-based-remediation:latest
                     livenessProbe:
                       httpGet:
                         path: /healthz
@@ -269,7 +271,7 @@ spec:
                   runAsNonRoot: true
                   seccompProfile:
                     type: RuntimeDefault
-                serviceAccountName: sbd-operator-controller-manager
+                serviceAccountName: sbr-operator-controller-manager
                 terminationGracePeriodSeconds: 10
       permissions:
         - rules:
@@ -304,7 +306,7 @@ spec:
               verbs:
                 - create
                 - patch
-          serviceAccountName: sbd-operator-controller-manager
+          serviceAccountName: sbr-operator-controller-manager
     strategy: deployment
   installModes:
     - supported: false
@@ -316,11 +318,11 @@ spec:
     - supported: true
       type: AllNamespaces
   keywords:
-    - sbd
+    - sbr
     - storage
     - remediation
   links:
-    - name: SBD Operator
+    - name: Storage-Based Remediation
       url: https://medik8s.io
   maintainers:
     - email: medik8s@googlegroups.com

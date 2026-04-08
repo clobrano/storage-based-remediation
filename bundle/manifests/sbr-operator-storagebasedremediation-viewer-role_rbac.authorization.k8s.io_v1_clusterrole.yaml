@@ -4,18 +4,20 @@ metadata:
   creationTimestamp: null
   labels:
     app.kubernetes.io/managed-by: kustomize
-    app.kubernetes.io/name: sbd-operator
-  name: sbd-operator-sbdremediationtemplate-admin-role
+    app.kubernetes.io/name: sbr-operator
+  name: sbr-operator-storagebasedremediation-viewer-role
 rules:
 - apiGroups:
   - storage-based-remediation.medik8s.io
   resources:
-  - sbdremediationtemplates
+  - storagebasedremediations
   verbs:
-  - '*'
+  - get
+  - list
+  - watch
 - apiGroups:
   - storage-based-remediation.medik8s.io
   resources:
-  - sbdremediationtemplates/status
+  - storagebasedremediations/status
   verbs:
   - get

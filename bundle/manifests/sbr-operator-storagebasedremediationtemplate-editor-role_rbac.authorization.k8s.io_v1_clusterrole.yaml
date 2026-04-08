@@ -3,26 +3,25 @@ kind: ClusterRole
 metadata:
   creationTimestamp: null
   labels:
-    rbac.ext-remediation/aggregate-to-ext-remediation: "true"
-  name: sbd-operator-ext-remediation
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/name: sbr-operator
+  name: sbr-operator-storagebasedremediationtemplate-editor-role
 rules:
 - apiGroups:
   - storage-based-remediation.medik8s.io
   resources:
   - storagebasedremediationtemplates
   verbs:
+  - create
+  - delete
   - get
   - list
+  - patch
+  - update
   - watch
 - apiGroups:
   - storage-based-remediation.medik8s.io
   resources:
-  - storagebasedremediations
+  - storagebasedremediationtemplates/status
   verbs:
   - get
-  - list
-  - watch
-  - create
-  - update
-  - patch
-  - delete

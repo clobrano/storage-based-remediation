@@ -52,13 +52,13 @@ spec:
                 type: string
               image:
                 description: |-
-                  Image is the container image for the SBD agent DaemonSet
-                  If not specified, defaults to sbd-agent from the same registry/org/tag as the operator
+                  Image is the container image for the SBR agent DaemonSet
+                  If not specified, defaults to sbr-agent from the same registry/org/tag as the operator
                 type: string
               imagePullPolicy:
                 default: IfNotPresent
                 description: |-
-                  ImagePullPolicy defines the pull policy for the SBD agent container image.
+                  ImagePullPolicy defines the pull policy for the SBR agent container image.
                   Valid values are Always, Never, and IfNotPresent.
                   Defaults to IfNotPresent for production stability.
                 enum:
@@ -69,15 +69,15 @@ spec:
               iotimeout:
                 default: 2s
                 description: |-
-                  IOTimeout defines the timeout for SBD I/O operations.
-                  This determines how long the system will wait for SBD I/O operations to complete.
+                  IOTimeout defines the timeout for SBR I/O operations.
+                  This determines how long the system will wait for SBR I/O operations to complete.
                   The value must be between 100 milliseconds and 5 minutes.
                 pattern: ^([0-9]+(\.[0-9]+)?(ms|s|m|h))+$
                 type: string
               logLevel:
                 default: info
                 description: |-
-                  LogLevel defines the logging level for the SBD agent pods.
+                  LogLevel defines the logging level for the SBR agent pods.
                   Valid values are debug, info, warn, and error.
                   Debug provides the most verbose logging, while error only logs error messages.
                 enum:
@@ -90,15 +90,15 @@ spec:
                 additionalProperties:
                   type: string
                 description: |-
-                  NodeSelector is a selector which must be true for the SBD agent pod to fit on a node.
-                  This allows users to control which nodes the SBD agent runs on by specifying node labels.
+                  NodeSelector is a selector which must be true for the SBR agent pod to fit on a node.
+                  This allows users to control which nodes the SBR agent runs on by specifying node labels.
                   If not specified, defaults to worker nodes only (node-role.kubernetes.io/worker: "").
                   The selector is merged with the default requirement for kubernetes.io/os=linux.
                 type: object
               peerCheckInterval:
                 default: 5s
                 description: |-
-                  PeerCheckInterval defines the interval for checking peer node heartbeats in the SBD device.
+                  PeerCheckInterval defines the interval for checking peer node heartbeats in the SBR device.
                   This determines how frequently each node reads and processes heartbeats from other nodes.
                   More frequent checks provide faster peer failure detection but increase I/O load on the shared storage.
                   The value must be between 1 second and 60 seconds.
@@ -160,7 +160,7 @@ spec:
                 default: 1h
                 description: |-
                   StaleNodeTimeout defines how long to wait before considering a node stale and removing it from slot mapping
-                  This timeout determines when inactive nodes are cleaned up from the shared SBD device slot assignments.
+                  This timeout determines when inactive nodes are cleaned up from the shared SBR device slot assignments.
                   Nodes that haven't updated their heartbeat within this duration will be considered stale and their slots
                   will be freed for reuse by new nodes. The value must be at least 1 minute.
                 pattern: ^([0-9]+(\.[0-9]+)?(s|m|h))+$
@@ -247,12 +247,12 @@ spec:
                 - type
                 x-kubernetes-list-type: map
               readyNodes:
-                description: ReadyNodes is the number of nodes where the SBD agent
+                description: ReadyNodes is the number of nodes where the SBR agent
                   is ready
                 format: int32
                 type: integer
               totalNodes:
-                description: TotalNodes is the total number of nodes where the SBD
+                description: TotalNodes is the total number of nodes where the SBR
                   agent should be deployed
                 format: int32
                 type: integer
