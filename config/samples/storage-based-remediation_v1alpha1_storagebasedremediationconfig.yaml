@@ -121,7 +121,7 @@ spec:
   # ========================================================================
   #
   # Apply configuration:
-  #   kubectl apply -f medik8s_v1alpha1_storagebasedremediationconfig.yaml
+  #   kubectl apply -f storage-based-remediation_v1alpha1_storagebasedremediationconfig.yaml
   #
   # Check status:
   #   kubectl get storagebasedremediationconfig
