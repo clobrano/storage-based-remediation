@@ -728,7 +728,7 @@ type StorageBasedRemediationConfigStatus struct {
 // +kubebuilder:subresource:status
 // +kubebuilder:resource:scope=Namespaced
 
-// StorageBasedRemediationConfig is the Schema for the sbdconfigs API.
+// StorageBasedRemediationConfig is the Schema for the storagebasedremediationconfigs API.
 type StorageBasedRemediationConfig struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
