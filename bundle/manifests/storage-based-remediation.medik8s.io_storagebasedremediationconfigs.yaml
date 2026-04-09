@@ -17,7 +17,7 @@ spec:
   - name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: StorageBasedRemediationConfig is the Schema for the sbdconfigs
+        description: StorageBasedRemediationConfig is the Schema for the storagebasedremediationconfigs
           API.
         properties:
           apiVersion:
