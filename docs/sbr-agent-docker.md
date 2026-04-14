@@ -1,10 +1,10 @@
-# SBD Agent Docker Container
+# SBR Agent Docker Container
 
-This document provides comprehensive instructions for building, deploying, and managing the SBD Agent Docker container.
+This document provides comprehensive instructions for building, deploying, and managing the SBR Agent Docker container.
 
 ## Overview
 
-The SBD Agent is a containerized application that manages hardware watchdog devices and SBD (Storage-Based Death) devices for high-availability cluster systems. It provides:
+The SBR Agent is a containerized application that manages hardware watchdog devices and SBD (Storage-Based Death) devices for high-availability cluster systems. It provides:
 
 - Hardware watchdog management and monitoring
 - SBD device monitoring and fencing operations
@@ -33,35 +33,25 @@ The SBD Agent is a containerized application that manages hardware watchdog devi
 
 ```bash
 # Build the image
-./scripts/build-sbd-agent.sh build
+./scripts/build-sbr-agent.sh build
 
 # Build with custom tag
-./scripts/build-sbd-agent.sh -t v1.0.0 build
+./scripts/build-sbr-agent.sh -t v1.0.0 build
 
 # Run all build and test steps
-./scripts/build-sbd-agent.sh all
+./scripts/build-sbr-agent.sh all
 ```
 
 ### Method 2: Using Docker Directly
 
 ```bash
 # Build the image
-docker build -f Dockerfile.sbd-agent -t sbd-agent:latest .
+docker build -f cmd/sbr-agent/Dockerfile -t sbr-agent:latest .
 
 # Build with build arguments
-docker build -f Dockerfile.sbd-agent \
+docker build -f cmd/sbr-agent/Dockerfile \
   --build-arg GO_VERSION=1.24 \
-  -t sbd-agent:latest .
-```
-
-### Method 3: Using Make (if Makefile is available)
-
-```bash
-# Build the container
-make docker-build-sbd-agent
-
-# Build and push
-make docker-build-push-sbd-agent
+  -t sbr-agent:latest .
 ```
 
 ## Running the Container
@@ -71,8 +61,8 @@ make docker-build-push-sbd-agent
 ```bash
 # Run with mock devices (for testing)
 docker run --rm \
-  --name sbd-agent \
-  sbd-agent:latest \
+  --name sbr-agent \
+  sbr-agent:latest \
   --watchdog-path=/tmp/mock/watchdog \
   --watchdog-timeout=30s \
   --log-level=info
@@ -83,7 +73,7 @@ docker run --rm \
 ```bash
 # Run with real hardware access
 docker run -d \
-  --name sbd-agent \
+  --name sbr-agent \
   --privileged \
   --cap-add=SYS_ADMIN \
   --cap-add=SYS_RAWIO \
@@ -91,9 +81,9 @@ docker run -d \
   --volume=/dev:/dev \
   --volume=/path/to/sbd/device:/dev/sbd \
   --restart=unless-stopped \
-  sbd-agent:latest \
+  sbr-agent:latest \
   --watchdog-path=/dev/watchdog \
-  --sbd-device=/dev/sbd \
+  --sbr-device=/dev/sbd \
   --watchdog-timeout=15s \
   --log-level=info
 ```
@@ -115,7 +105,7 @@ docker run -d \
 |----------|-------------|---------|---------|
 | `--watchdog-path` | Path to watchdog device | `/dev/watchdog` | `--watchdog-path=/dev/watchdog0` |
 | `--watchdog-timeout` | Pet interval for watchdog | `30s` | `--watchdog-timeout=15s` |
-| `--sbd-device` | Path to SBD block device | (empty) | `--sbd-device=/dev/disk/by-id/sbd-device` |
+| `--sbr-device` | Path to SBD block device | (empty) | `--sbr-device=/dev/disk/by-id/sbr-device` |
 | `--log-level` | Logging level | `info` | `--log-level=debug` |
 
 ## Kubernetes Deployment
@@ -123,14 +113,14 @@ docker run -d \
 ### Using the DaemonSet
 
 ```bash
-# Deploy the SBD Agent DaemonSet
-kubectl apply -f deploy/sbd-agent-daemonset.yaml
+# Deploy the SBR Agent DaemonSet
+kubectl apply -f deploy/sbr-agent-daemonset.yaml
 
 # Check deployment status
-kubectl get daemonset sbd-agent -n kube-system
+kubectl get daemonset sbr-agent -n kube-system
 
 # View logs
-kubectl logs -f daemonset/sbd-agent -n kube-system
+kubectl logs -f daemonset/sbr-agent -n kube-system
 ```
 
 ### Manual Pod Deployment
@@ -139,14 +129,14 @@ kubectl logs -f daemonset/sbd-agent -n kube-system
 apiVersion: v1
 kind: Pod
 metadata:
-  name: sbd-agent
+  name: sbr-agent
   namespace: kube-system
 spec:
   hostNetwork: true
   hostPID: true
   containers:
-  - name: sbd-agent
-    image: sbd-agent:latest
+  - name: sbr-agent
+    image: sbr-agent:latest
     securityContext:
       privileged: true
       runAsUser: 0
@@ -159,7 +149,7 @@ spec:
       mountPath: /dev
     args:
     - "--watchdog-path=/dev/watchdog"
-    - "--sbd-device=/dev/disk/by-id/sbd-device"
+    - "--sbr-device=/dev/disk/by-id/sbr-device"
     - "--watchdog-timeout=30s"
   volumes:
   - name: dev
@@ -173,7 +163,7 @@ spec:
 
 ### Required Privileges
 
-The SBD Agent requires elevated privileges to function:
+The SBR Agent requires elevated privileges to function:
 
 - **Privileged mode**: For unrestricted device access
 - **SYS_ADMIN capability**: For watchdog device operations
@@ -219,31 +209,31 @@ The container includes health check endpoints:
 
 ```bash
 # Check if watchdog device is accessible
-docker exec sbd-agent test -e /dev/watchdog
+docker exec sbr-agent test -e /dev/watchdog
 
 # Check process status
-docker exec sbd-agent ps aux | grep sbd-agent
+docker exec sbr-agent ps aux | grep sbr-agent
 ```
 
 ### Log Analysis
 
 ```bash
 # View container logs
-docker logs sbd-agent
+docker logs sbr-agent
 
 # Follow logs in real-time
-docker logs -f sbd-agent
+docker logs -f sbr-agent
 
 # View logs with timestamps
-docker logs -t sbd-agent
+docker logs -t sbr-agent
 
 # In Kubernetes
-kubectl logs -f pod/sbd-agent-xxx -n kube-system
+kubectl logs -f pod/sbr-agent-xxx -n kube-system
 ```
 
 ### Metrics and Monitoring
 
-The SBD Agent can be integrated with monitoring systems:
+The SBR Agent can be integrated with monitoring systems:
 
 - **Prometheus**: Expose metrics for watchdog pet status
 - **Grafana**: Visualize SBD device health
@@ -311,10 +301,10 @@ echo 'V' > /dev/watchdog  # Be careful - this may reset system!
 
 ```bash
 # Build development image
-IMAGE_TAG=dev ./scripts/build-sbd-agent.sh build
+IMAGE_TAG=dev ./scripts/build-sbr-agent.sh build
 
 # Run with debug logging
-docker run --rm sbd-agent:dev \
+docker run --rm sbr-agent:dev \
   --log-level=debug \
   --watchdog-timeout=5s
 ```
@@ -330,19 +320,19 @@ touch /tmp/mock-devices/sbd
 # Run with mock devices
 docker run --rm \
   -v /tmp/mock-devices:/tmp/mock \
-  sbd-agent:latest \
+  sbr-agent:latest \
   --watchdog-path=/tmp/mock/watchdog \
-  --sbd-device=/tmp/mock/sbd
+  --sbr-device=/tmp/mock/sbd
 ```
 
 ### Integration Testing
 
 ```bash
 # Run automated tests
-./scripts/build-sbd-agent.sh test
+./scripts/build-sbr-agent.sh test
 
 # Run comprehensive test suite
-./scripts/build-sbd-agent.sh all
+./scripts/build-sbr-agent.sh all
 ```
 
 ## Production Deployment
@@ -370,11 +360,11 @@ For production HA clusters:
 
 ```bash
 # Update to new version
-docker pull sbd-agent:v1.1.0
-kubectl set image daemonset/sbd-agent sbd-agent=sbd-agent:v1.1.0 -n kube-system
+docker pull sbr-agent:v1.1.0
+kubectl set image daemonset/sbr-agent sbr-agent=sbr-agent:v1.1.0 -n kube-system
 
 # Rollback if needed
-kubectl rollout undo daemonset/sbd-agent -n kube-system
+kubectl rollout undo daemonset/sbr-agent -n kube-system
 ```
 
 ### Log Rotation
@@ -384,7 +374,7 @@ Configure log rotation to prevent disk space issues:
 ```yaml
 spec:
   containers:
-  - name: sbd-agent
+  - name: sbr-agent
     env:
     - name: LOG_ROTATE_SIZE
       value: "100M"

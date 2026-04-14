@@ -79,7 +79,7 @@ Comprehensive documentation is available in the `docs/` directory:
 
 - [Design Document](docs/design.md) - Architecture and design principles
 - [Blueprint](docs/blueprint.md) - Detailed implementation blueprint
-- [User Guide](docs/sbdconfig-user-guide.md) - Configuration and usage
+- [User Guide](docs/sbr-config-user-guide.md) - Configuration and usage
 - [Webhook Requirements](docs/WEBHOOK-REQUIREMENTS.md) - Admission webhook setup
 
 ## Testing

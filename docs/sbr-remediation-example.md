@@ -81,13 +81,13 @@ Non-leader instances will wait and requeue until they become leader or another l
 ### Check Remediation Status
 
 ```bash
-kubectl get sbdremediation -o wide
+kubectl get storagebasedremediation -o wide
 ```
 
 ### View Detailed Status
 
 ```bash
-kubectl describe sbdremediation fence-worker-1
+kubectl describe storagebasedremediation fence-worker-1
 ```
 
 ### Common Issues
@@ -116,7 +116,7 @@ The StorageBasedRemediation controller works in conjunction with SBD Agents:
 
 The operator supports these environment variables:
 
-- `SBD_DEVICE_PATH`: Path to SBD device (default: `/mnt/sbd-operator-device`)
+- `SBD_DEVICE_PATH`: Path to SBD device (default: `/mnt/sbr-operator-device`)
 - `POD_NAME`: Operator pod name (used for operator instance identification)
 
 ## Security Considerations
@@ -133,30 +133,30 @@ The operator supports these environment variables:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: sbd-operator
+  name: sbr-operator
 spec:
   replicas: 3  # Multiple instances for HA
   template:
     spec:
       containers:
       - name: manager
-        image: sbd-operator:latest
+        image: sbr-operator:latest
         args:
         - --leader-elect=true
         env:
         - name: SBD_DEVICE_PATH
-          value: "/mnt/sbd-operator-device"
+          value: "/mnt/sbr-operator-device"
         - name: POD_NAME
           valueFrom:
             fieldRef:
               fieldPath: metadata.name
         volumeDevices:
-        - name: sbd-device
-          devicePath: /mnt/sbd-operator-device
+        - name: sbr-device
+          devicePath: /mnt/sbr-operator-device
       volumes:
-      - name: sbd-device
+      - name: sbr-device
         persistentVolumeClaim:
-          claimName: sbd-shared-storage
+          claimName: sbr-shared-storage
 ```
 
 This setup ensures high availability while maintaining safe, coordinated fencing operations across the cluster. 

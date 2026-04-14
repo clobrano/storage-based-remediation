@@ -2,7 +2,7 @@
 
 ## Overview
 
-The SBD operator uses coordination strategies to prevent race conditions when multiple nodes write to the shared SBD device simultaneously. The NodeManager provides two coordination strategies with automatic fallback.
+The SBR operator uses coordination strategies to prevent race conditions when multiple nodes write to the shared SBD device simultaneously. The NodeManager provides two coordination strategies with automatic fallback.
 
 ## Coordination Strategies
 
@@ -11,7 +11,7 @@ The SBD operator uses coordination strategies to prevent race conditions when mu
 Uses POSIX file locking (`flock()`) to serialize write operations across nodes.
 
 **When Used:**
-- `--sbd-file-locking=true` (default)
+- `--sbr-file-locking=true` (default)
 - SBD device path is available
 - Storage system supports POSIX file locking
 
@@ -47,7 +47,7 @@ lockFile.Close()
 Uses randomized delays to reduce write collision probability.
 
 **When Used:**
-- `--sbd-file-locking=false` (explicit disable)
+- `--sbr-file-locking=false` (explicit disable)
 - File locking enabled but no device path available
 - File locking fails or times out
 
@@ -72,13 +72,13 @@ writeOperation()
 
 ```bash
 # Enable file locking (default)
-./sbd-agent --sbd-file-locking=true --sbd-device=/shared/sbd
+./sbr-agent --sbr-file-locking=true --sbr-device=/shared/sbd
 
 # Disable file locking (jitter-only)
-./sbd-agent --sbd-file-locking=false --sbd-device=/shared/sbd
+./sbr-agent --sbr-file-locking=false --sbr-device=/shared/sbd
 
 # Watchdog-only mode (no SBD device)
-./sbd-agent --node-name=node1
+./sbr-agent --node-name=node1
 ```
 
 ### Environment Variables
@@ -86,7 +86,7 @@ writeOperation()
 ```bash
 # File locking can also be controlled via environment
 export SBD_FILE_LOCKING=false
-./sbd-agent --sbd-device=/shared/sbd
+./sbr-agent --sbr-device=/shared/sbd
 ```
 
 ### NodeManager Configuration
@@ -143,19 +143,19 @@ The coordination strategy is logged but not exposed as a separate metric. Monito
 **For POSIX-Compatible Storage (NFS, CephFS, GlusterFS):**
 ```bash
 # Recommended: Enable file locking for optimal coordination
-./sbd-agent --sbd-file-locking=true --sbd-device=/shared/sbd
+./sbr-agent --sbr-file-locking=true --sbr-device=/shared/sbd
 ```
 
 **For Cloud/Object Storage:**
 ```bash
 # Recommended: Disable file locking to avoid timeout delays
-./sbd-agent --sbd-file-locking=false --sbd-device=/shared/sbd
+./sbr-agent --sbr-file-locking=false --sbr-device=/shared/sbd
 ```
 
 **For Mixed Environments:**
 ```bash
 # Default behavior: Attempt file locking with automatic fallback
-./sbd-agent --sbd-device=/shared/sbd
+./sbr-agent --sbr-device=/shared/sbd
 ```
 
 ### Troubleshooting
@@ -164,16 +164,16 @@ The coordination strategy is logged but not exposed as a separate metric. Monito
 ```
 # Symptoms: 5-second delays during write operations
 # Solution: Disable file locking for incompatible storage
-./sbd-agent --sbd-file-locking=false --sbd-device=/shared/sbd
+./sbr-agent --sbr-file-locking=false --sbr-device=/shared/sbd
 ```
 
 **High Retry Rates:**
 ```
 # Check coordination strategy in logs
-grep "coordinationStrategy" /var/log/sbd-agent.log
+grep "coordinationStrategy" /var/log/sbr-agent.log
 
 # If using jitter-only, consider enabling file locking
-./sbd-agent --sbd-file-locking=true --sbd-device=/shared/sbd
+./sbr-agent --sbr-file-locking=true --sbr-device=/shared/sbd
 ```
 
 **Process Crashes and Lock Recovery:**
@@ -210,7 +210,7 @@ Previous versions only used jitter-based coordination. The new version:
 If you prefer the previous jitter-only behavior:
 ```bash
 # Explicitly disable file locking
-./sbd-agent --sbd-file-locking=false --sbd-device=/shared/sbd
+./sbr-agent --sbr-file-locking=false --sbr-device=/shared/sbd
 ```
 
 ## Frequently Asked Questions
@@ -269,7 +269,7 @@ If you prefer the previous jitter-only behavior:
 **A**: Check the coordination strategy in the logs:
 ```bash
 # Look for coordination strategy messages
-grep "coordinationStrategy" /var/log/sbd-agent.log
+grep "coordinationStrategy" /var/log/sbr-agent.log
 
 # Expected output for working file locking:
 # "coordinationStrategy=file-locking"

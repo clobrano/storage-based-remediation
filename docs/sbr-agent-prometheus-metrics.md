@@ -1,6 +1,6 @@
-# SBD Agent Prometheus Metrics
+# SBR Agent Prometheus Metrics
 
-The SBD Agent now exposes Prometheus metrics to provide observability into its health, performance, and cluster status.
+The SBR Agent now exposes Prometheus metrics to provide observability into its health, performance, and cluster status.
 
 ## Metrics Configuration
 
@@ -15,7 +15,7 @@ The metrics port can also be configured through environment variables if needed 
 ### Agent Health Metrics
 
 #### `sbd_agent_status_healthy` (Gauge)
-- **Description**: Overall SBD Agent health status
+- **Description**: Overall SBR Agent health status
 - **Values**: 
   - `1` = Agent is healthy (watchdog accessible, SBD device working)
   - `0` = Agent is unhealthy (watchdog failures, SBD device issues)
@@ -57,7 +57,7 @@ http://localhost:8080/metrics
 
 ### Example Output
 ```
-# HELP sbd_agent_status_healthy SBD Agent health status (1 = healthy, 0 = unhealthy)
+# HELP sbd_agent_status_healthy SBR Agent health status (1 = healthy, 0 = unhealthy)
 # TYPE sbd_agent_status_healthy gauge
 sbd_agent_status_healthy 1
 
@@ -89,26 +89,26 @@ Deploy the Service and ServiceMonitor resources for Prometheus integration:
 
 ```bash
 # Deploy the metrics service and ServiceMonitor
-kubectl apply -f deploy/sbd-agent-metrics.yaml
+kubectl apply -f deploy/sbr-agent-metrics.yaml
 
 # Verify the service is created
-kubectl get service -n sbd-system sbd-agent-metrics
+kubectl get service -n sbr-operator-system sbr-agent-metrics
 
 # Verify the ServiceMonitor is created (requires Prometheus Operator)
-kubectl get servicemonitor -n sbd-system sbd-agent
+kubectl get servicemonitor -n sbr-operator-system sbr-agent
 ```
 
-### Update SBD Agent DaemonSet
+### Update SBR Agent DaemonSet
 
-If your SBD Agent DaemonSet doesn't expose the metrics port, update it to include the metrics port:
+If your SBR Agent DaemonSet doesn't expose the metrics port, update it to include the metrics port:
 
 ```yaml
-# Add to the sbd-agent container in your DaemonSet spec
+# Add to the sbr-agent container in your DaemonSet spec
 spec:
   template:
     spec:
       containers:
-      - name: sbd-agent
+      - name: sbr-agent
         # ... existing configuration ...
         args:
         - "--metrics-port=8080"  # Add this argument
@@ -123,28 +123,28 @@ spec:
 
 ```bash
 # 1. Deploy the SBD system namespace
-kubectl apply -f deploy/sbd-system-namespace.yaml
+kubectl apply -f deploy/sbr-operator-system-namespace.yaml
 
-# 2. Deploy the SBD Agent DaemonSet
-kubectl apply -f deploy/sbd-agent-daemonset-simple.yaml
+# 2. Deploy the SBR Agent DaemonSet
+kubectl apply -f deploy/sbr-agent-daemonset-simple.yaml
 
 # 3. Deploy the metrics service and ServiceMonitor
-kubectl apply -f deploy/sbd-agent-metrics.yaml
+kubectl apply -f deploy/sbr-agent-metrics.yaml
 
 # 4. Verify deployment
-kubectl get pods -n sbd-system
-kubectl get services -n sbd-system
-kubectl get servicemonitor -n sbd-system
+kubectl get pods -n sbr-operator-system
+kubectl get services -n sbr-operator-system
+kubectl get servicemonitor -n sbr-operator-system
 ```
 
 ## Prometheus Configuration
 
 ### Manual Scrape Configuration
-Add this to your Prometheus configuration to scrape SBD Agent metrics:
+Add this to your Prometheus configuration to scrape SBR Agent metrics:
 
 ```yaml
 scrape_configs:
-  - job_name: 'sbd-agent'
+  - job_name: 'sbr-agent'
     static_configs:
       - targets: ['node1:8080', 'node2:8080', 'node3:8080']
     scrape_interval: 15s
@@ -152,12 +152,12 @@ scrape_configs:
 ```
 
 ### Kubernetes ServiceMonitor
-For Kubernetes deployments with the Prometheus Operator, the ServiceMonitor in `deploy/sbd-agent-metrics.yaml` provides:
+For Kubernetes deployments with the Prometheus Operator, the ServiceMonitor in `deploy/sbr-agent-metrics.yaml` provides:
 
-- **Automatic Discovery**: Prometheus automatically discovers SBD Agent pods
+- **Automatic Discovery**: Prometheus automatically discovers SBR Agent pods
 - **Label Enrichment**: Adds node, pod, namespace, and host_ip labels
 - **Metric Filtering**: Only collects SBD-related metrics (`sbd_*`)
-- **Proper Job Labeling**: Sets job label to `sbd-agent`
+- **Proper Job Labeling**: Sets job label to `sbr-agent`
 
 ## Alerting Rules
 
@@ -165,7 +165,7 @@ For Kubernetes deployments with the Prometheus Operator, the ServiceMonitor in `
 
 ```yaml
 groups:
-- name: sbd-agent
+- name: sbr-agent
   rules:
   - alert: SBDAgentUnhealthy
     expr: sbd_agent_status_healthy == 0
@@ -173,8 +173,8 @@ groups:
     labels:
       severity: critical
     annotations:
-      summary: "SBD Agent is unhealthy on {{ $labels.instance }}"
-      description: "SBD Agent on {{ $labels.instance }} has been unhealthy for more than 30 seconds"
+      summary: "SBR Agent is unhealthy on {{ $labels.instance }}"
+      description: "SBR Agent on {{ $labels.instance }} has been unhealthy for more than 30 seconds"
 
   - alert: SBDDeviceIOErrors
     expr: increase(sbd_device_io_errors_total[5m]) > 0
@@ -198,8 +198,8 @@ groups:
     labels:
       severity: critical
     annotations:
-      summary: "SBD Agent initiated self-fence on {{ $labels.instance }}"
-      description: "SBD Agent on {{ $labels.instance }} has initiated {{ $value }} self-fence event(s) in the last minute"
+      summary: "SBR Agent initiated self-fence on {{ $labels.instance }}"
+      description: "SBR Agent on {{ $labels.instance }} has initiated {{ $value }} self-fence event(s) in the last minute"
 ```
 
 ## Troubleshooting
@@ -207,26 +207,26 @@ groups:
 ### Check Metrics Availability
 ```bash
 # Test metrics endpoint from within the cluster
-kubectl exec -n sbd-system <sbd-agent-pod> -- curl -s http://localhost:8080/metrics
+kubectl exec -n sbr-operator-system <sbr-agent-pod> -- curl -s http://localhost:8080/metrics
 
 # Port-forward to access metrics locally
-kubectl port-forward -n sbd-system <sbd-agent-pod> 8080:8080
+kubectl port-forward -n sbr-operator-system <sbr-agent-pod> 8080:8080
 curl http://localhost:8080/metrics
 ```
 
 ### Verify ServiceMonitor Discovery
 ```bash
 # Check if Prometheus discovered the ServiceMonitor
-kubectl get servicemonitor -n sbd-system sbd-agent -o yaml
+kubectl get servicemonitor -n sbr-operator-system sbr-agent -o yaml
 
 # Check Prometheus targets (if accessible)
-# Look for sbd-agent job in Prometheus UI under Status > Targets
+# Look for sbr-agent job in Prometheus UI under Status > Targets
 ```
 
 ### Common Issues
 
 1. **ServiceMonitor not discovered**: Ensure Prometheus Operator is installed and has proper RBAC
-2. **No metrics scraped**: Verify SBD Agent is exposing metrics on port 8080
+2. **No metrics scraped**: Verify SBR Agent is exposing metrics on port 8080
 3. **Missing node labels**: Check that the Service selector matches the DaemonSet pod labels
 
 ## Implementation Details
@@ -242,4 +242,4 @@ kubectl get servicemonitor -n sbd-system sbd-agent -o yaml
 All metrics are thread-safe and can be updated from multiple goroutines (watchdog loop, SBD device loop, heartbeat loop, peer monitor loop).
 
 ### Graceful Shutdown
-The metrics HTTP server is gracefully shut down when the SBD Agent stops, with a 5-second timeout. 
+The metrics HTTP server is gracefully shut down when the SBR Agent stops, with a 5-second timeout. 

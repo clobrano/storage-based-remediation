@@ -20,13 +20,13 @@ The StorageBasedRemediation controller has been enhanced with comprehensive stat
 The StorageBasedRemediation now uses standard Kubernetes conditions for status tracking:
 
 ```go
-type SBDRemediationConditionType string
+type StorageBasedRemediationConditionType string
 
 const (
-    SBDRemediationConditionLeadershipAcquired SBDRemediationConditionType = "LeadershipAcquired"
-    SBDRemediationConditionFencingInProgress  SBDRemediationConditionType = "FencingInProgress"
-    SBDRemediationConditionFencingSucceeded   SBDRemediationConditionType = "FencingSucceeded"
-    SBDRemediationConditionReady              SBDRemediationConditionType = "Ready"
+    StorageBasedRemediationConditionLeadershipAcquired StorageBasedRemediationConditionType = "LeadershipAcquired"
+    StorageBasedRemediationConditionFencingInProgress  StorageBasedRemediationConditionType = "FencingInProgress"
+    StorageBasedRemediationConditionFencingSucceeded   StorageBasedRemediationConditionType = "FencingSucceeded"
+    StorageBasedRemediationConditionReady              StorageBasedRemediationConditionType = "Ready"
 )
 ```
 
@@ -35,9 +35,9 @@ const (
 The `updateStatusWithConditions` method provides comprehensive status update functionality:
 
 ```go
-func (r *SBDRemediationReconciler) updateStatusWithConditions(ctx context.Context, 
-    sbdRemediation *medik8sv1alpha1.SBDRemediation, 
-    conditions map[medik8sv1alpha1.SBDRemediationConditionType]conditionUpdate, 
+func (r *StorageBasedRemediationReconciler) updateStatusWithConditions(ctx context.Context, 
+    sbrRemediation *medik8sv1alpha1.StorageBasedRemediation, 
+    conditions map[medik8sv1alpha1.StorageBasedRemediationConditionType]conditionUpdate, 
     logger logr.Logger) (ctrl.Result, error)
 ```
 
@@ -53,8 +53,8 @@ func (r *SBDRemediationReconciler) updateStatusWithConditions(ctx context.Contex
 The `updateStatusWithRetry` method handles optimistic locking conflicts:
 
 ```go
-func (r *SBDRemediationReconciler) updateStatusWithRetry(ctx context.Context, 
-    sbdRemediation *medik8sv1alpha1.SBDRemediation) error
+func (r *StorageBasedRemediationReconciler) updateStatusWithRetry(ctx context.Context, 
+    sbrRemediation *medik8sv1alpha1.StorageBasedRemediation) error
 ```
 
 **Features:**
@@ -87,8 +87,8 @@ type FencingError struct {
 The fencing operation includes intelligent retry logic:
 
 ```go
-func (r *SBDRemediationReconciler) performFencingWithRetry(ctx context.Context, 
-    sbdRemediation *medik8sv1alpha1.SBDRemediation, 
+func (r *StorageBasedRemediationReconciler) performFencingWithRetry(ctx context.Context, 
+    sbrRemediation *medik8sv1alpha1.StorageBasedRemediation, 
     targetNodeID uint16) error
 ```
 
@@ -185,20 +185,20 @@ The enhanced controller includes comprehensive integration tests covering:
 ### Basic Status Update
 
 ```go
-conditions := map[medik8sv1alpha1.SBDRemediationConditionType]conditionUpdate{
-    medik8sv1alpha1.SBDRemediationConditionFencingInProgress: {
+conditions := map[medik8sv1alpha1.StorageBasedRemediationConditionType]conditionUpdate{
+    medik8sv1alpha1.StorageBasedRemediationConditionFencingInProgress: {
         status:  metav1.ConditionTrue,
         reason:  "FencingInitiated",
         message: "Writing fence message to SBD device",
     },
-    medik8sv1alpha1.SBDRemediationConditionReady: {
+    medik8sv1alpha1.StorageBasedRemediationConditionReady: {
         status:  metav1.ConditionFalse,
         reason:  "FencingInProgress",
         message: "Fencing operation in progress",
     },
 }
 
-result, err := r.updateStatusWithConditions(ctx, sbdRemediation, conditions, logger)
+result, err := r.updateStatusWithConditions(ctx, sbrRemediation, conditions, logger)
 if err != nil {
     return result, err
 }
@@ -207,7 +207,7 @@ if err != nil {
 ### Error Handling with Classification
 
 ```go
-if err := r.performFencingWithRetry(ctx, sbdRemediation, targetNodeID); err != nil {
+if err := r.performFencingWithRetry(ctx, sbrRemediation, targetNodeID); err != nil {
     var fencingErr *FencingError
     var message string
     if errors.As(err, &fencingErr) {
@@ -216,20 +216,20 @@ if err := r.performFencingWithRetry(ctx, sbdRemediation, targetNodeID); err != n
         message = fmt.Sprintf("Fencing operation failed: %v", err)
     }
     
-    conditions := map[medik8sv1alpha1.SBDRemediationConditionType]conditionUpdate{
-        medik8sv1alpha1.SBDRemediationConditionFencingSucceeded: {
+    conditions := map[medik8sv1alpha1.StorageBasedRemediationConditionType]conditionUpdate{
+        medik8sv1alpha1.StorageBasedRemediationConditionFencingSucceeded: {
             status:  metav1.ConditionFalse,
             reason:  "FencingFailed",
             message: message,
         },
-        medik8sv1alpha1.SBDRemediationConditionReady: {
+        medik8sv1alpha1.StorageBasedRemediationConditionReady: {
             status:  metav1.ConditionTrue,
             reason:  "Failed",
             message: message,
         },
     }
     
-    _, updateErr := r.updateStatusWithConditions(ctx, sbdRemediation, conditions, logger)
+    _, updateErr := r.updateStatusWithConditions(ctx, sbrRemediation, conditions, logger)
     return ctrl.Result{}, updateErr
 }
 ```
@@ -246,10 +246,10 @@ remediation.IsReady()                // Returns true if Ready=True
 remediation.HasLeadership()          // Returns true if LeadershipAcquired=True
 
 // Get specific conditions
-condition := remediation.GetCondition(SBDRemediationConditionReady)
+condition := remediation.GetCondition(StorageBasedRemediationConditionReady)
 
 // Set conditions
-remediation.SetCondition(SBDRemediationConditionReady, 
+remediation.SetCondition(StorageBasedRemediationConditionReady, 
     metav1.ConditionTrue, "Succeeded", "Fencing completed successfully")
 ```
 

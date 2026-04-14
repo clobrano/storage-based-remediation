@@ -37,16 +37,16 @@ For unknown provisioners, the controller creates a temporary PVC with `ReadWrite
 
 ## Configuration
 
-No additional configuration is required. The validation happens automatically when you specify a `sharedStorageClass` in your SBDConfig:
+No additional configuration is required. The validation happens automatically when you specify a `sharedStorageClass` in your StorageBasedRemediationConfig:
 
 ```yaml
 apiVersion: storage-based-remediation.medik8s.io/v1alpha1
-kind: SBDConfig
+kind: StorageBasedRemediationConfig
 metadata:
-  name: sbd-config
+  name: sbr-config
 spec:
   sharedStorageClass: "efs-csi"  # This will be validated
-  sbdWatchdogPath: "/dev/watchdog"
+  watchdogPath: "/dev/watchdog"
 ```
 
 ## Error Handling
@@ -118,12 +118,12 @@ To debug storage class validation issues:
 
 1. **Check Events:**
    ```bash
-   kubectl get events -n <namespace> --field-selector involvedObject.name=<sbdconfig-name>
+   kubectl get events -n <namespace> --field-selector involvedObject.name=<sbrconfig-name>
    ```
 
 2. **Check Controller Logs:**
    ```bash
-   kubectl logs -n sbd-operator-system deployment/sbd-operator-controller-manager
+   kubectl logs -n sbr-operator-system deployment/sbr-operator-controller-manager
    ```
 
 3. **Check PVC Status:**
@@ -137,7 +137,7 @@ To debug storage class validation issues:
 If you're currently using an incompatible storage class:
 
 1. **Create a compatible storage class** (e.g., EFS, NFS)
-2. **Update your SBDConfig** to use the new storage class
+2. **Update your StorageBasedRemediationConfig** to use the new storage class
 3. **Wait for the controller** to reconcile and create the new PVC
 4. **Clean up the old PVC** if necessary
 
@@ -146,23 +146,23 @@ Example migration from EBS to EFS:
 ```yaml
 # Before (incompatible)
 apiVersion: storage-based-remediation.medik8s.io/v1alpha1
-kind: SBDConfig
+kind: StorageBasedRemediationConfig
 metadata:
-  name: sbd-config
+  name: sbr-config
 spec:
   sharedStorageClass: "gp3-csi"  # EBS - ReadWriteOnce only
-  sbdWatchdogPath: "/dev/watchdog"
+  watchdogPath: "/dev/watchdog"
 
 ---
 
 # After (compatible)
 apiVersion: storage-based-remediation.medik8s.io/v1alpha1
-kind: SBDConfig
+kind: StorageBasedRemediationConfig
 metadata:
-  name: sbd-config
+  name: sbr-config
 spec:
   sharedStorageClass: "efs-csi"  # EFS - ReadWriteMany compatible
-  sbdWatchdogPath: "/dev/watchdog"
+  watchdogPath: "/dev/watchdog"
 ```
 
 ## Best Practices

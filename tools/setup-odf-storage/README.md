@@ -172,8 +172,8 @@ spec:
 kubectl get storageclass sbd-cephfs
 
 # Check SBD integration
-kubectl apply -f your-sbdconfig.yaml
-kubectl get sbdconfig -o wide
+kubectl apply -f your-sbrconfig.yaml
+kubectl get storagebasedremediationconfig -o wide
 ```
 
 ## Troubleshooting
@@ -463,7 +463,7 @@ For issues with:
 
 ## Related Documentation
 
-- [SBD Operator User Guide](../docs/sbdconfig-user-guide.md)
+- [SBR Operator User Guide](../docs/sbr-config-user-guide.md)
 - [Storage Class Validation](../docs/storage-class-validation.md)
 - [OpenShift Data Foundation Documentation](https://access.redhat.com/documentation/en-us/red_hat_openshift_data_foundation)
 - [Ceph Documentation](https://docs.ceph.com/) 

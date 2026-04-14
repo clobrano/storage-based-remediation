@@ -1,31 +1,31 @@
-# SBDConfig Quick Reference
+# StorageBasedRemediationConfig Quick Reference
 
-Quick reference for common SBDConfig operations and configurations.
+Quick reference for common StorageBasedRemediationConfig operations and configurations.
 
-## Multiple SBDConfig Support
+## Multiple StorageBasedRemediationConfig Support
 
-**NEW**: Multiple SBDConfig resources can coexist in the same namespace.
+**NEW**: Multiple StorageBasedRemediationConfig resources can coexist in the same namespace.
 
 ### Quick Commands
 ```bash
 # Deploy multiple configs in same namespace
 kubectl apply -f production-sbd.yaml -f canary-sbd.yaml
 
-# List all SBDConfigs in namespace
-kubectl get sbdconfig -n my-app
+# List all StorageBasedRemediationConfigs in namespace
+kubectl get storagebasedremediationconfig -n my-app
 
 # Check DaemonSets for each config
-kubectl get daemonset -n my-app -l app=sbd-agent
+kubectl get daemonset -n my-app -l app=sbr-agent
 
 # View logs for specific config
-kubectl logs -n my-app -l sbdconfig=production-sbd
-kubectl logs -n my-app -l sbdconfig=canary-sbd
+kubectl logs -n my-app -l storagebasedremediationconfig=production-sbd
+kubectl logs -n my-app -l storagebasedremediationconfig=canary-sbd
 ```
 
 ### Resource Naming Pattern
-- Service Account: `sbd-agent` (shared)
-- DaemonSet: `sbd-agent-{config-name}`
-- ClusterRoleBinding: `sbd-agent-{namespace}-{config-name}`
+- Service Account: `sbr-agent` (shared)
+- DaemonSet: `sbr-agent-{config-name}`
+- ClusterRoleBinding: `sbr-agent-{namespace}-{config-name}`
 
 ## Basic Operations
 
@@ -33,37 +33,37 @@ kubectl logs -n my-app -l sbdconfig=canary-sbd
 
 ### Deployment
 ```bash
-# Apply SBDConfig
-kubectl apply -f sbdconfig.yaml
+# Apply StorageBasedRemediationConfig
+kubectl apply -f storagebasedremediationconfig.yaml
 
 # Check status
-kubectl get sbdconfig
-kubectl get sbdconfig -o wide
+kubectl get storagebasedremediationconfig
+kubectl get storagebasedremediationconfig -o wide
 
 # Describe configuration
-kubectl describe sbdconfig <name>
+kubectl describe storagebasedremediationconfig <name>
 ```
 
 ### Monitoring
 ```bash
 # Check DaemonSet
-kubectl get daemonset -n sbd-system
+kubectl get daemonset -n sbr-operator-system
 
 # Check pods
-kubectl get pods -n sbd-system -o wide
+kubectl get pods -n sbr-operator-system -o wide
 
 # View logs
-kubectl logs -n sbd-system -l app=sbd-agent
-kubectl logs -n sbd-system -l app=sbd-agent -f
+kubectl logs -n sbr-operator-system -l app=sbr-agent
+kubectl logs -n sbr-operator-system -l app=sbr-agent -f
 
 # Check events
-kubectl get events -n sbd-system --sort-by='.lastTimestamp'
+kubectl get events -n sbr-operator-system --sort-by='.lastTimestamp'
 ```
 
 ### Troubleshooting
 ```bash
 # Debug pod issues
-kubectl describe pods -n sbd-system
+kubectl describe pods -n sbr-operator-system
 
 # Check node watchdog devices
 kubectl debug node/<node-name> -- ls -la /dev/watchdog*
@@ -77,34 +77,34 @@ curl http://<node-ip>:8080/metrics
 ### Minimal (Watchdog-Only)
 ```yaml
 apiVersion: storage-based-remediation.medik8s.io/v1alpha1
-kind: SBDConfig
+kind: StorageBasedRemediationConfig
 metadata:
   name: basic-sbd
 spec:
-  image: "quay.io/medik8s/sbd-agent:v1.0.0"
+  image: "quay.io/medik8s/storage-based-remediation-agent:v1.0.0"
 ```
 
 ### Production
 ```yaml
 apiVersion: storage-based-remediation.medik8s.io/v1alpha1
-kind: SBDConfig
+kind: StorageBasedRemediationConfig
 metadata:
   name: production-sbd
 spec:
-  image: "quay.io/medik8s/sbd-agent:v1.2.3"
+  image: "quay.io/medik8s/storage-based-remediation-agent:v1.2.3"
   namespace: "high-availability"
-  sbdWatchdogPath: "/dev/watchdog1"
+  watchdogPath: "/dev/watchdog1"
   staleNodeTimeout: "30m"
 ```
 
 ### Development
 ```yaml
 apiVersion: storage-based-remediation.medik8s.io/v1alpha1
-kind: SBDConfig
+kind: StorageBasedRemediationConfig
 metadata:
   name: dev-sbd
 spec:
-  image: "quay.io/medik8s/sbd-agent:latest"
+  image: "quay.io/medik8s/storage-based-remediation-agent:latest"
   staleNodeTimeout: "5m"
 ```
 
@@ -112,9 +112,9 @@ spec:
 
 | Field | Default | Description |
 |-------|---------|-------------|
-| `image` | `sbd-agent:latest` | Container image for SBD agent |
-| `namespace` | `sbd-system` | Deployment namespace |
-| `sbdWatchdogPath` | `/dev/watchdog` | Watchdog device path |
+| `image` | `sbr-agent:latest` | Container image for SBD agent |
+| `namespace` | `sbr-operator-system` | Deployment namespace |
+| `watchdogPath` | `/dev/watchdog` | Watchdog device path |
 | `staleNodeTimeout` | `1h` | Node cleanup timeout |
 
 ## Status Fields
