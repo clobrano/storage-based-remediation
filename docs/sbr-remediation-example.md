@@ -1,6 +1,6 @@
 # StorageBasedRemediation Controller Usage
 
-The StorageBasedRemediation controller provides automated fencing capabilities for Kubernetes nodes through SBD (Storage-Based Death) mechanisms.
+The StorageBasedRemediation controller provides automated fencing capabilities for Kubernetes nodes through SBD (STONITH block device) mechanisms.
 
 ## Overview
 
@@ -14,7 +14,7 @@ When a node becomes unresponsive or requires manual fencing, create an `StorageB
 ## Prerequisites
 
 - Shared SBD device accessible by the operator pod
-- SBD Agents running on all nodes that need monitoring
+- SBR Agents running on all nodes that need monitoring
 - Operator configured with appropriate RBAC permissions
 
 ## Basic Example
@@ -104,9 +104,9 @@ kubectl describe storagebasedremediation fence-worker-1
    - SBD device not accessible to operator pod
    - Check volume mounts and device path configuration
 
-## Integration with SBD Agents
+## Integration with SBR Agents
 
-The StorageBasedRemediation controller works in conjunction with SBD Agents:
+The StorageBasedRemediation controller works in conjunction with SBR Agents:
 
 1. **Controller**: Writes fence messages to target node slots
 2. **Target Node Agent**: Detects fence message in its slot and initiates self-fencing
@@ -116,7 +116,7 @@ The StorageBasedRemediation controller works in conjunction with SBD Agents:
 
 The operator supports these environment variables:
 
-- `SBD_DEVICE_PATH`: Path to SBD device (default: `/mnt/sbr-operator-device`)
+- `SBR_DEVICE_PATH`: Path to SBD device (default: `/mnt/sbr-operator-device`)
 - `POD_NAME`: Operator pod name (used for operator instance identification)
 
 ## Security Considerations
@@ -129,7 +129,7 @@ The operator supports these environment variables:
 ## Example Deployment
 
 ```yaml
-# SBD operator with leader election enabled
+# SBR operator with leader election enabled
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -144,7 +144,7 @@ spec:
         args:
         - --leader-elect=true
         env:
-        - name: SBD_DEVICE_PATH
+        - name: SBR_DEVICE_PATH
           value: "/mnt/sbr-operator-device"
         - name: POD_NAME
           valueFrom:

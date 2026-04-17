@@ -152,4 +152,4 @@ The webhook is implemented in:
 - `config/webhook/` - Kubernetes webhook configuration
 - `cmd/main.go` - Webhook registration with manager
 
-The validation uses the same business logic as the SBD agent for consistent slot assignment behavior. 
+The validation uses the same business logic as the SBR agent for consistent slot assignment behavior. 

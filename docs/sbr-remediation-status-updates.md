@@ -103,7 +103,7 @@ func (r *StorageBasedRemediationReconciler) performFencingWithRetry(ctx context.
 ### Success Path
 
 1. **LeadershipAcquired=True** → Operator has leadership for fencing
-2. **FencingInProgress=True** → Writing fence message to SBD device
+2. **FencingInProgress=True** → Writing fence message to SBD (STONITH Block Device) device
 3. **FencingSucceeded=True** → Fence message written and verified
 4. **Ready=True** → Overall remediation completed successfully
 

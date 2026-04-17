@@ -1,4 +1,4 @@
-# SBD Coordination Strategies
+# SBR Coordination Strategies
 
 ## Overview
 
@@ -85,7 +85,7 @@ writeOperation()
 
 ```bash
 # File locking can also be controlled via environment
-export SBD_FILE_LOCKING=false
+export SBR_FILE_LOCKING=false
 ./sbr-agent --sbr-device=/shared/sbd
 ```
 
@@ -133,8 +133,8 @@ strategy := nodeManager.GetCoordinationStrategy()
 ### Metrics
 
 The coordination strategy is logged but not exposed as a separate metric. Monitor through:
-- `sbd_device_io_errors_total` - I/O operation failures
-- `sbd_slot_assignment_retries_total` - Retry attempts due to conflicts
+- `sbr_device_io_errors_total` - I/O operation failures
+- `sbr_slot_assignment_retries_total` - Retry attempts due to conflicts
 
 ## Best Practices
 
@@ -178,7 +178,7 @@ grep "coordinationStrategy" /var/log/sbr-agent.log
 
 **Process Crashes and Lock Recovery:**
 ```
-# Symptoms: Concern about deadlocks if SBD agent crashes while holding lock
+# Symptoms: Concern about deadlocks if SBR agent crashes while holding lock
 # Solution: No action needed - POSIX guarantees automatic lock release
 
 # Verification: Check that new processes can acquire locks after crash
@@ -215,7 +215,7 @@ If you prefer the previous jitter-only behavior:
 
 ## Frequently Asked Questions
 
-### Q: What happens if the SBD agent crashes while holding a file lock?
+### Q: What happens if the SBR agent crashes while holding a file lock?
 
 **A**: The lock is **automatically released** by the kernel when the process exits or crashes. This is a fundamental POSIX guarantee.
 

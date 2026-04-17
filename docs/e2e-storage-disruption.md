@@ -170,7 +170,7 @@ After cleanup, the test verifies:
 - All iptables rules are removed
 - Storage connectivity is restored
 - Nodes regain access to shared storage
-- SBD agents resume normal operation
+- SBR agents resume normal operation
 
 ## Error Handling
 

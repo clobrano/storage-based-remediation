@@ -14,30 +14,30 @@ The metrics port can also be configured through environment variables if needed 
 
 ### Agent Health Metrics
 
-#### `sbd_agent_status_healthy` (Gauge)
+#### `sbr_agent_status_healthy` (Gauge)
 - **Description**: Overall SBR Agent health status
 - **Values**: 
   - `1` = Agent is healthy (watchdog accessible, SBD device working)
   - `0` = Agent is unhealthy (watchdog failures, SBD device issues)
 - **Usage**: Monitor overall agent health for alerting
 
-#### `sbd_watchdog_pets_total` (Counter)
+#### `sbr_watchdog_pets_total` (Counter)
 - **Description**: Total number of successful watchdog pets
 - **Usage**: Track watchdog activity and detect pet failures
 
-#### `sbd_self_fenced_total` (Counter)
+#### `sbr_self_fenced_total` (Counter)
 - **Description**: Total number of self-fence operations initiated by this agent
 - **Usage**: Monitor critical self-fencing events
 
-### SBD Device Metrics
+### SBR Device Metrics
 
-#### `sbd_device_io_errors_total` (Counter)
+#### `sbr_device_io_errors_total` (Counter)
 - **Description**: Total I/O errors when interacting with the shared SBD device
 - **Usage**: Monitor SBD device health and detect storage issues
 
 ### Cluster Status Metrics
 
-#### `sbd_peer_status` (GaugeVec)
+#### `sbr_peer_status` (GaugeVec)
 - **Description**: Current liveness status of peer nodes in the cluster
 - **Labels**:
   - `node_id`: Numeric ID of the peer node (1-255)
@@ -57,28 +57,28 @@ http://localhost:8080/metrics
 
 ### Example Output
 ```
-# HELP sbd_agent_status_healthy SBR Agent health status (1 = healthy, 0 = unhealthy)
-# TYPE sbd_agent_status_healthy gauge
-sbd_agent_status_healthy 1
+# HELP sbr_agent_status_healthy SBR Agent health status (1 = healthy, 0 = unhealthy)
+# TYPE sbr_agent_status_healthy gauge
+sbr_agent_status_healthy 1
 
-# HELP sbd_device_io_errors_total Total number of I/O errors encountered when interacting with the shared SBD device
-# TYPE sbd_device_io_errors_total counter
-sbd_device_io_errors_total 0
+# HELP sbr_device_io_errors_total Total number of I/O errors encountered when interacting with the shared SBD device
+# TYPE sbr_device_io_errors_total counter
+sbr_device_io_errors_total 0
 
-# HELP sbd_watchdog_pets_total Total number of times the local kernel watchdog has been successfully petted
-# TYPE sbd_watchdog_pets_total counter
-sbd_watchdog_pets_total 1547
+# HELP sbr_watchdog_pets_total Total number of times the local kernel watchdog has been successfully petted
+# TYPE sbr_watchdog_pets_total counter
+sbr_watchdog_pets_total 1547
 
-# HELP sbd_peer_status Current liveness status of each peer node (1 = alive, 0 = unhealthy/down)
-# TYPE sbd_peer_status gauge
-sbd_peer_status{node_id="2",node_name="node-2",status="alive"} 1
-sbd_peer_status{node_id="2",node_name="node-2",status="unhealthy"} 0
-sbd_peer_status{node_id="3",node_name="node-3",status="alive"} 0
-sbd_peer_status{node_id="3",node_name="node-3",status="unhealthy"} 1
+# HELP sbr_peer_status Current liveness status of each peer node (1 = alive, 0 = unhealthy/down)
+# TYPE sbr_peer_status gauge
+sbr_peer_status{node_id="2",node_name="node-2",status="alive"} 1
+sbr_peer_status{node_id="2",node_name="node-2",status="unhealthy"} 0
+sbr_peer_status{node_id="3",node_name="node-3",status="alive"} 0
+sbr_peer_status{node_id="3",node_name="node-3",status="unhealthy"} 1
 
-# HELP sbd_self_fenced_total Total number of times the agent has initiated a self-fence
-# TYPE sbd_self_fenced_total counter
-sbd_self_fenced_total 0
+# HELP sbr_self_fenced_total Total number of times the agent has initiated a self-fence
+# TYPE sbr_self_fenced_total counter
+sbr_self_fenced_total 0
 ```
 
 ## Kubernetes Deployment
@@ -122,7 +122,7 @@ spec:
 ### Complete Deployment Example
 
 ```bash
-# 1. Deploy the SBD system namespace
+# 1. Deploy the SBR system namespace
 kubectl apply -f deploy/sbr-operator-system-namespace.yaml
 
 # 2. Deploy the SBR Agent DaemonSet
@@ -156,7 +156,7 @@ For Kubernetes deployments with the Prometheus Operator, the ServiceMonitor in `
 
 - **Automatic Discovery**: Prometheus automatically discovers SBR Agent pods
 - **Label Enrichment**: Adds node, pod, namespace, and host_ip labels
-- **Metric Filtering**: Only collects SBD-related metrics (`sbd_*`)
+- **Metric Filtering**: Only collects SBR-related metrics (`sbr_*`)
 - **Proper Job Labeling**: Sets job label to `sbr-agent`
 
 ## Alerting Rules
@@ -167,8 +167,8 @@ For Kubernetes deployments with the Prometheus Operator, the ServiceMonitor in `
 groups:
 - name: sbr-agent
   rules:
-  - alert: SBDAgentUnhealthy
-    expr: sbd_agent_status_healthy == 0
+  - alert: SBRAgentUnhealthy
+    expr: sbr_agent_status_healthy == 0
     for: 30s
     labels:
       severity: critical
@@ -176,25 +176,25 @@ groups:
       summary: "SBR Agent is unhealthy on {{ $labels.instance }}"
       description: "SBR Agent on {{ $labels.instance }} has been unhealthy for more than 30 seconds"
 
-  - alert: SBDDeviceIOErrors
-    expr: increase(sbd_device_io_errors_total[5m]) > 0
+  - alert: SBRDeviceIOErrors
+    expr: increase(sbr_device_io_errors_total[5m]) > 0
     labels:
       severity: warning
     annotations:
       summary: "SBD Device I/O errors detected on {{ $labels.instance }}"
       description: "{{ $value }} I/O errors occurred in the last 5 minutes on {{ $labels.instance }}"
 
-  - alert: SBDPeerNodeDown
-    expr: sbd_peer_status{status="unhealthy"} == 1
+  - alert: SBRPeerNodeDown
+    expr: sbr_peer_status{status="unhealthy"} == 1
     for: 1m
     labels:
       severity: warning
     annotations:
-      summary: "SBD peer node {{ $labels.node_name }} is unhealthy"
+      summary: "SBR peer node {{ $labels.node_name }} is unhealthy"
       description: "Peer node {{ $labels.node_name }} (ID: {{ $labels.node_id }}) has been unhealthy for more than 1 minute"
 
-  - alert: SBDSelfFenceEvent
-    expr: increase(sbd_self_fenced_total[1m]) > 0
+  - alert: SBRSelfFenceEvent
+    expr: increase(sbr_self_fenced_total[1m]) > 0
     labels:
       severity: critical
     annotations:

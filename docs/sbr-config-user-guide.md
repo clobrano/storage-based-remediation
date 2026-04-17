@@ -33,7 +33,7 @@ StorageBasedRemediationConfig is a cluster-scoped Kubernetes custom resource tha
 - **A/B Testing**: Deploy different SBR agent versions side by side
 - **Gradual Rollouts**: Roll out new configurations incrementally
 - **Environment Separation**: Separate dev/staging configs in the same namespace
-- **Different Requirements**: Multiple teams with different SBD settings
+- **Different Requirements**: Multiple teams with different SBR settings
 
 ### How It Works
 - **Shared Service Account**: All StorageBasedRemediationConfigs in a namespace share the same `sbr-agent` service account
@@ -52,7 +52,7 @@ StorageBasedRemediationConfig is a cluster-scoped Kubernetes custom resource tha
 apiVersion: storage-based-remediation.medik8s.io/v1alpha1
 kind: StorageBasedRemediationConfig
 metadata:
-  name: production-sbd
+  name: production-sbr
   namespace: my-app
 spec:
   image: "quay.io/medik8s/storage-based-remediation-agent:v1.2.3"
@@ -63,7 +63,7 @@ spec:
 apiVersion: storage-based-remediation.medik8s.io/v1alpha1
 kind: StorageBasedRemediationConfig
 metadata:
-  name: canary-sbd
+  name: canary-sbr
   namespace: my-app
 spec:
   image: "quay.io/medik8s/storage-based-remediation-agent:v1.3.0-beta"
@@ -75,8 +75,8 @@ spec:
 
 This creates:
 - Shared service account: `my-app/sbr-agent`
-- Production DaemonSet: `my-app/sbr-agent-production-sbd`
-- Canary DaemonSet: `my-app/sbr-agent-canary-sbd`
+- Production DaemonSet: `my-app/sbr-agent-production-sbr`
+- Canary DaemonSet: `my-app/sbr-agent-canary-sbr`
 - Separate ClusterRoleBindings for each configuration
 
 ## Installation
@@ -152,7 +152,7 @@ For clusters that only need watchdog-based fencing without shared storage:
 apiVersion: storage-based-remediation.medik8s.io/v1alpha1
 kind: StorageBasedRemediationConfig
 metadata:
-  name: basic-sbd
+  name: basic-sbr
 spec:
   # Use defaults for most settings
   image: "quay.io/medik8s/storage-based-remediation-agent:v1.0.0"
@@ -167,7 +167,7 @@ For production environments with specific requirements:
 apiVersion: storage-based-remediation.medik8s.io/v1alpha1
 kind: StorageBasedRemediationConfig
 metadata:
-  name: production-sbd
+  name: production-sbr
 spec:
   # Specific image version for reproducibility
   image: "quay.io/medik8s/storage-based-remediation-agent:v1.2.3"
@@ -190,7 +190,7 @@ For development or testing environments:
 apiVersion: storage-based-remediation.medik8s.io/v1alpha1
 kind: StorageBasedRemediationConfig
 metadata:
-  name: dev-sbd
+  name: dev-sbr
 spec:
   # Use latest for development
   image: "quay.io/medik8s/storage-based-remediation-agent:latest"
@@ -210,7 +210,7 @@ For environments with multiple clusters:
 apiVersion: storage-based-remediation.medik8s.io/v1alpha1
 kind: StorageBasedRemediationConfig
 metadata:
-  name: cluster-west-sbd
+  name: cluster-west-sbr
 spec:
   image: "quay.io/medik8s/storage-based-remediation-agent:v1.0.0"
   namespace: "sbr-cluster-west"
@@ -219,7 +219,7 @@ spec:
 apiVersion: storage-based-remediation.medik8s.io/v1alpha1
 kind: StorageBasedRemediationConfig
 metadata:
-  name: cluster-east-sbd
+  name: cluster-east-sbr
 spec:
   image: "quay.io/medik8s/storage-based-remediation-agent:v1.0.0"
   namespace: "sbr-cluster-east"
@@ -236,7 +236,7 @@ kubectl apply -f sbrconfig.yaml
 
 # Verify creation
 kubectl get storagebasedremediationconfig
-kubectl describe storagebasedremediationconfig basic-sbd
+kubectl describe storagebasedremediationconfig basic-sbr
 ```
 
 ### Monitor Deployment
@@ -256,7 +256,7 @@ kubectl logs -n sbr-operator-system -l app=sbr-agent
 
 ```bash
 # Edit existing configuration
-kubectl edit storagebasedremediationconfig basic-sbd
+kubectl edit storagebasedremediationconfig basic-sbr
 
 # Apply updated configuration
 kubectl apply -f updated-sbrconfig.yaml
@@ -266,7 +266,7 @@ kubectl apply -f updated-sbrconfig.yaml
 
 ```bash
 # Delete configuration (this will remove all SBR agents)
-kubectl delete storagebasedremediationconfig basic-sbd
+kubectl delete storagebasedremediationconfig basic-sbr
 
 # Verify cleanup
 kubectl get pods -n sbr-operator-system
@@ -351,7 +351,7 @@ For environments with specific storage requirements:
 apiVersion: storage-based-remediation.medik8s.io/v1alpha1
 kind: StorageBasedRemediationConfig
 metadata:
-  name: custom-storage-sbd
+  name: custom-storage-sbr
 spec:
   # Use custom StorageClass with specific parameters
   sharedStorageClass: "custom-nfs-sc"
@@ -368,11 +368,11 @@ The SBR agent exposes metrics on port 8080:
 
 ```yaml
 # Key metrics to monitor
-sbd_agent_status_healthy          # Agent health (1=healthy, 0=unhealthy)
-sbd_device_io_errors_total        # I/O errors with shared storage
-sbd_watchdog_pets_total           # Successful watchdog pets
-sbd_peer_status                   # Peer node status
-sbd_self_fenced_total             # Self-fencing events
+sbr_agent_status_healthy          # Agent health (1=healthy, 0=unhealthy)
+sbr_device_io_errors_total        # I/O errors with shared storage
+sbr_watchdog_pets_total           # Successful watchdog pets
+sbr_peer_status                   # Peer node status
+sbr_self_fenced_total             # Self-fencing events
 ```
 
 ### Health Checks
@@ -405,7 +405,7 @@ kubectl logs -n sbr-operator-system -l app=sbr-agent | grep -i error
 
 ### Common Issues
 
-#### SBD Agent Pods Not Starting
+#### SBR Agent Pods Not Starting
 
 **Symptoms**: Pods in `Pending` or `CrashLoopBackOff` state
 
@@ -457,7 +457,7 @@ kubectl debug node/<node-name> -- dmesg | grep -i watchdog
 **Diagnosis**:
 ```bash
 # Check storage connectivity
-kubectl logs -n sbr-operator-system -l app=sbr-agent | grep -i "sbd device"
+kubectl logs -n sbr-operator-system -l app=sbr-agent | grep -i "sbr device"
 
 # Verify file locking capability
 kubectl logs -n sbr-operator-system -l app=sbr-agent | grep -i "coordination strategy"
@@ -484,7 +484,7 @@ kubectl get storagebasedremediationconfig -o yaml | grep staleNodeTimeout
 **Solutions**:
 - **Reduce timeout**: Lower `staleNodeTimeout` for faster cleanup
 - **Manual cleanup**: Remove stale node entries if needed
-- **Scale considerations**: SBD supports up to 255 nodes per cluster
+- **Scale considerations**: STONITH Block Devices (SBD) support up to 255 nodes per cluster
 
 ### Performance Tuning
 
@@ -556,7 +556,7 @@ allowHostPID: true
 ### Operational Procedures
 
 1. **Gradual rollout**: Test configuration changes in development first
-2. **Monitoring setup**: Monitor SBD metrics and node health
+2. **Monitoring setup**: Monitor SBR metrics and node health
 3. **Incident response**: Have procedures for handling fencing events
 4. **Documentation**: Maintain runbooks for common scenarios
 
@@ -593,16 +593,16 @@ Key metrics to visualize:
 groups:
 - name: sbr-agent
   rules:
-  - alert: SBDAgentUnhealthy
-    expr: sbd_agent_status_healthy == 0
+  - alert: SBRAgentUnhealthy
+    expr: sbr_agent_status_healthy == 0
     for: 1m
     labels:
       severity: critical
     annotations:
-      summary: "SBD Agent unhealthy on {{ $labels.instance }}"
+      summary: "SBR Agent unhealthy on {{ $labels.instance }}"
       
   - alert: WatchdogPetFailure
-    expr: increase(sbd_watchdog_pets_total[5m]) == 0
+    expr: increase(sbr_watchdog_pets_total[5m]) == 0
     for: 2m
     labels:
       severity: warning
@@ -619,7 +619,7 @@ For complete API documentation, see:
 
 ## Related Documentation
 
-- [SBD Coordination Strategies](sbr-coordination-strategies.md)
-- [SBD Agent Prometheus Metrics](sbr-agent-prometheus-metrics.md)
+- [SBR Coordination Strategies](sbr-coordination-strategies.md)
+- [SBR Agent Prometheus Metrics](sbr-agent-prometheus-metrics.md)
 - [Design Documentation](design.md)
 - [OpenShift Configuration](../config/openshift/README.md) 

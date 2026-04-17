@@ -9,7 +9,7 @@ Quick reference for common StorageBasedRemediationConfig operations and configur
 ### Quick Commands
 ```bash
 # Deploy multiple configs in same namespace
-kubectl apply -f production-sbd.yaml -f canary-sbd.yaml
+kubectl apply -f production-sbr.yaml -f canary-sbr.yaml
 
 # List all StorageBasedRemediationConfigs in namespace
 kubectl get storagebasedremediationconfig -n my-app
@@ -18,8 +18,8 @@ kubectl get storagebasedremediationconfig -n my-app
 kubectl get daemonset -n my-app -l app=sbr-agent
 
 # View logs for specific config
-kubectl logs -n my-app -l storagebasedremediationconfig=production-sbd
-kubectl logs -n my-app -l storagebasedremediationconfig=canary-sbd
+kubectl logs -n my-app -l storagebasedremediationconfig=production-sbr
+kubectl logs -n my-app -l storagebasedremediationconfig=canary-sbr
 ```
 
 ### Resource Naming Pattern
@@ -79,7 +79,7 @@ curl http://<node-ip>:8080/metrics
 apiVersion: storage-based-remediation.medik8s.io/v1alpha1
 kind: StorageBasedRemediationConfig
 metadata:
-  name: basic-sbd
+  name: basic-sbr
 spec:
   image: "quay.io/medik8s/storage-based-remediation-agent:v1.0.0"
 ```
@@ -89,7 +89,7 @@ spec:
 apiVersion: storage-based-remediation.medik8s.io/v1alpha1
 kind: StorageBasedRemediationConfig
 metadata:
-  name: production-sbd
+  name: production-sbr
 spec:
   image: "quay.io/medik8s/storage-based-remediation-agent:v1.2.3"
   namespace: "high-availability"
@@ -102,7 +102,7 @@ spec:
 apiVersion: storage-based-remediation.medik8s.io/v1alpha1
 kind: StorageBasedRemediationConfig
 metadata:
-  name: dev-sbd
+  name: dev-sbr
 spec:
   image: "quay.io/medik8s/storage-based-remediation-agent:latest"
   staleNodeTimeout: "5m"
@@ -112,7 +112,7 @@ spec:
 
 | Field | Default | Description |
 |-------|---------|-------------|
-| `image` | `sbr-agent:latest` | Container image for SBD agent |
+| `image` | `sbr-agent:latest` | Container image for SBR agent |
 | `namespace` | `sbr-operator-system` | Deployment namespace |
 | `watchdogPath` | `/dev/watchdog` | Watchdog device path |
 | `staleNodeTimeout` | `1h` | Node cleanup timeout |
@@ -129,11 +129,11 @@ spec:
 
 | Metric | Description |
 |--------|-------------|
-| `sbd_agent_status_healthy` | Agent health (1=healthy, 0=unhealthy) |
-| `sbd_watchdog_pets_total` | Successful watchdog pets |
-| `sbd_device_io_errors_total` | I/O errors with shared storage |
-| `sbd_peer_status` | Peer node status |
-| `sbd_self_fenced_total` | Self-fencing events |
+| `sbr_agent_status_healthy` | Agent health (1=healthy, 0=unhealthy) |
+| `sbr_watchdog_pets_total` | Successful watchdog pets |
+| `sbr_device_io_errors_total` | I/O errors with shared storage |
+| `sbr_peer_status` | Peer node status |
+| `sbr_self_fenced_total` | Self-fencing events |
 
 ## Troubleshooting Checklist
 

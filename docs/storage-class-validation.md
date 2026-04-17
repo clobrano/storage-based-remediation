@@ -2,15 +2,15 @@
 
 ## Overview
 
-The SBD operator now includes automatic storage class validation to ensure that the specified storage class supports the `ReadWriteMany` (RWX) access mode required for SBD shared storage coordination.
+The SBR operator now includes automatic storage class validation to ensure that the specified storage class supports the `ReadWriteMany` (RWX) access mode required for SBR shared storage coordination.
 
 ## Why This Matters
 
-SBD requires shared storage that can be accessed by multiple nodes simultaneously to coordinate fencing decisions. Storage classes that only support `ReadWriteOnce` (RWO) access mode, such as AWS EBS volumes, are not compatible with SBD's shared storage requirements.
+SBR requires shared storage that can be accessed by multiple nodes simultaneously to coordinate fencing decisions. Storage classes that only support `ReadWriteOnce` (RWO) access mode, such as AWS EBS volumes, are not compatible with SBR's shared storage requirements.
 
 ## How It Works
 
-The SBD controller validates storage classes in two ways:
+The SBR controller validates storage classes in two ways:
 
 ### 1. Known Provisioner Detection
 
@@ -60,7 +60,7 @@ If an incompatible storage class is detected, the controller will:
 
 Example error message:
 ```
-StorageClass 'gp3-csi' does not support ReadWriteMany access mode required for SBD shared storage
+StorageClass 'gp3-csi' does not support ReadWriteMany access mode required for SBR shared storage
 ```
 
 ## Compatible Storage Solutions
@@ -84,7 +84,7 @@ StorageClass 'gp3-csi' does not support ReadWriteMany access mode required for S
 
 ## Testing
 
-The SBD operator includes comprehensive tests for storage class validation:
+The SBR operator includes comprehensive tests for storage class validation:
 
 ### Unit Tests
 - Tests for known provisioner detection
@@ -175,7 +175,7 @@ spec:
 
 ## Implementation Details
 
-The storage class validation is implemented in the SBD controller's reconciliation loop:
+The storage class validation is implemented in the SBR controller's reconciliation loop:
 
 1. **Early Validation**: Storage class validation happens before PVC creation
 2. **Fail Fast**: Invalid storage classes are rejected immediately
@@ -183,4 +183,4 @@ The storage class validation is implemented in the SBD controller's reconciliati
 4. **Retry Logic**: Transient errors are retried with exponential backoff
 5. **Event Emission**: Users get clear feedback about validation failures
 
-This ensures that SBD configurations are validated early and users get clear feedback about any issues. 
+This ensures that SBR configurations are validated early and users get clear feedback about any issues. 
