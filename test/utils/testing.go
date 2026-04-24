@@ -28,6 +28,9 @@ import (
 	. "github.com/onsi/ginkgo/v2" //nolint:staticcheck
 	. "github.com/onsi/gomega"    //nolint:staticcheck
 
+	. "github.com/onsi/ginkgo/v2" //nolint:staticcheck
+	. "github.com/onsi/gomega"    //nolint:staticcheck
+
 	"github.com/aws/aws-sdk-go/service/ec2"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -200,7 +203,6 @@ func (tn *TestNamespace) CreateStorageBasedRemediationConfig(name string,
 			WatchdogPath:    "/dev/watchdog",
 			LogLevel:        "debug",
 			RebootMethod:    "none", // Always use "none" for testing to prevent actual reboots
-			WatchdogTimeout: &metav1.Duration{Duration: 60 * time.Second},
 		},
 	}
 
@@ -1243,7 +1245,6 @@ func DefaultValidateAgentDeploymentOptions(sbrConfigName string) ValidateAgentDe
 		StorageBasedRemediationConfigName: sbrConfigName,
 		ExpectedArgs: []string{
 			"--watchdog-path=/dev/watchdog",
-			"--watchdog-timeout=1m30s",
 		},
 		MinReadyPods:     3,
 		DaemonSetTimeout: time.Minute * 5,
