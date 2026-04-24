@@ -201,10 +201,6 @@ func (tn *TestNamespace) CreateStorageBasedRemediationConfig(name string,
 			LogLevel:        "debug",
 			RebootMethod:    "none", // Always use "none" for testing to prevent actual reboots
 			WatchdogTimeout: &metav1.Duration{Duration: 60 * time.Second},
-			PetIntervalMultiple: func() *int32 {
-				val := int32(4)
-				return &val
-			}(),
 		},
 	}
 

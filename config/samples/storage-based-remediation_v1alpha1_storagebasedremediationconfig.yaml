@@ -20,7 +20,6 @@ spec:
   # Watchdog configuration
   watchdogPath: "/dev/watchdog"
   watchdogTimeout: "60s"
-  petIntervalMultiple: 4
 
   # Node selection - run on worker nodes only
   nodeSelector:

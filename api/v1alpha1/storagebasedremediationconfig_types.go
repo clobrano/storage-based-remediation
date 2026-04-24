@@ -50,12 +50,6 @@ const (
 	MinWatchdogTimeout = 10 * time.Second
 	// MaxWatchdogTimeout is the maximum allowed watchdog timeout
 	MaxWatchdogTimeout = 300 * time.Second
-	// DefaultPetIntervalMultiple is the default multiple for calculating pet interval from watchdog timeout
-	DefaultPetIntervalMultiple = 4
-	// MinPetIntervalMultiple is the minimum allowed pet interval multiple
-	MinPetIntervalMultiple = 3
-	// MaxPetIntervalMultiple is the maximum allowed pet interval multiple
-	MaxPetIntervalMultiple = 20
 	// DefaultIOTimeout is the default timeout for I/O operations
 	DefaultIOTimeout = 2 * time.Second
 	// MinIOTimeout is the minimum allowed I/O timeout
@@ -167,16 +161,6 @@ type StorageBasedRemediationConfigSpec struct {
 	// +kubebuilder:default="60s"
 	// +optional
 	WatchdogTimeout *metav1.Duration `json:"watchdogTimeout,omitempty"`
-
-	// PetIntervalMultiple defines the multiple used to calculate the pet interval from the watchdog timeout.
-	// Pet interval = watchdog timeout / pet interval multiple.
-	// This ensures the pet interval is always shorter than the watchdog timeout with a safety margin.
-	// The value must be between 3.0 and 20.0, with 4.0 providing a good balance of safety and efficiency.
-	// +kubebuilder:validation:Minimum=3
-	// +kubebuilder:validation:Maximum=20
-	// +kubebuilder:default=4
-	// +optional
-	PetIntervalMultiple *int32 `json:"petIntervalMultiple,omitempty"`
 
 	// LogLevel defines the logging level for the SBR agent pods.
 	// Valid values are debug, info, warn, and error.
@@ -305,19 +289,10 @@ func (s *StorageBasedRemediationConfigSpec) GetWatchdogTimeout() time.Duration {
 	return DefaultWatchdogTimeout
 }
 
-// GetPetIntervalMultiple returns the pet interval multiple with default fallback
-func (s *StorageBasedRemediationConfigSpec) GetPetIntervalMultiple() int32 {
-	if s.PetIntervalMultiple != nil {
-		return *s.PetIntervalMultiple
-	}
-	return DefaultPetIntervalMultiple
-}
-
-// GetPetInterval calculates the pet interval based on watchdog timeout and multiple
+// GetPetInterval calculates the pet interval based on watchdog timeout and the hardcoded multiple
 func (s *StorageBasedRemediationConfigSpec) GetPetInterval() time.Duration {
 	watchdogTimeout := s.GetWatchdogTimeout()
-	multiple := s.GetPetIntervalMultiple()
-	petInterval := watchdogTimeout / time.Duration(multiple)
+	petInterval := watchdogTimeout / time.Duration(agent.PetIntervalMultiple)
 
 	// Ensure minimum pet interval of 1 second
 	if petInterval < time.Second {
@@ -460,21 +435,6 @@ func (s *StorageBasedRemediationConfigSpec) ValidateWatchdogTimeout() error {
 
 	if timeout > MaxWatchdogTimeout {
 		return fmt.Errorf("watchdog timeout %v is greater than maximum %v", timeout, MaxWatchdogTimeout)
-	}
-
-	return nil
-}
-
-// ValidatePetIntervalMultiple validates the pet interval multiple value
-func (s *StorageBasedRemediationConfigSpec) ValidatePetIntervalMultiple() error {
-	multiple := s.GetPetIntervalMultiple()
-
-	if multiple < MinPetIntervalMultiple {
-		return fmt.Errorf("pet interval multiple %d is less than minimum %d", multiple, MinPetIntervalMultiple)
-	}
-
-	if multiple > MaxPetIntervalMultiple {
-		return fmt.Errorf("pet interval multiple %d is greater than maximum %d", multiple, MaxPetIntervalMultiple)
 	}
 
 	return nil
@@ -631,10 +591,6 @@ func (s *StorageBasedRemediationConfigSpec) ValidateAll() error {
 
 	if err := s.ValidateWatchdogTimeout(); err != nil {
 		return fmt.Errorf("watchdog timeout validation failed: %w", err)
-	}
-
-	if err := s.ValidatePetIntervalMultiple(); err != nil {
-		return fmt.Errorf("pet interval multiple validation failed: %w", err)
 	}
 
 	if err := s.ValidatePetIntervalTiming(); err != nil {
