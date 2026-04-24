@@ -1034,7 +1034,6 @@ func (r *StorageBasedRemediationConfigReconciler) Reconcile(ctx context.Context,
 		"spec.sbrWatchdogPath", sbrConfig.Spec.GetWatchdogPath(),
 		"spec.staleNodeTimeout", sbrConfig.Spec.GetStaleNodeTimeout(),
 		"spec.watchdogTimeout", sbrConfig.Spec.GetWatchdogTimeout(),
-		"spec.petIntervalMultiple", sbrConfig.Spec.GetPetIntervalMultiple(),
 		"spec.calculatedPetInterval", sbrConfig.Spec.GetPetInterval())
 
 	// Validate the StorageBasedRemediationConfig spec

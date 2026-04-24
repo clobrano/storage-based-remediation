@@ -353,46 +353,10 @@ func TestStorageBasedRemediationConfigSpec_GetWatchdogTimeout(t *testing.T) {
 	}
 }
 
-func TestStorageBasedRemediationConfigSpec_GetPetIntervalMultiple(t *testing.T) {
-	tests := []struct {
-		name     string
-		spec     StorageBasedRemediationConfigSpec
-		expected int32
-	}{
-		{
-			name: "nil multiple returns default",
-			spec: StorageBasedRemediationConfigSpec{
-				PetIntervalMultiple: nil,
-			},
-			expected: DefaultPetIntervalMultiple,
-		},
-		{
-			name: "explicit multiple is returned",
-			spec: StorageBasedRemediationConfigSpec{
-				PetIntervalMultiple: &[]int32{5}[0],
-			},
-			expected: 5,
-		},
-		{
-			name: "custom multiple is returned",
-			spec: StorageBasedRemediationConfigSpec{
-				PetIntervalMultiple: &[]int32{6}[0],
-			},
-			expected: 6,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := tt.spec.GetPetIntervalMultiple()
-			if result != tt.expected {
-				t.Errorf("Expected %v, got %v", tt.expected, result)
-			}
-		})
-	}
-}
-
 func TestStorageBasedRemediationConfigSpec_GetPetInterval(t *testing.T) {
+	longWatchdogTimeout := time.Duration(120)
+	shortWatchdogTimeout := time.Duration(10)
+
 	tests := []struct {
 		name     string
 		spec     StorageBasedRemediationConfigSpec
@@ -401,37 +365,21 @@ func TestStorageBasedRemediationConfigSpec_GetPetInterval(t *testing.T) {
 		{
 			name:     "default values",
 			spec:     StorageBasedRemediationConfigSpec{},
-			expected: DefaultWatchdogTimeout / time.Duration(DefaultPetIntervalMultiple), // 60s / 4 = 15s
+			expected: DefaultWatchdogTimeout / time.Duration(agent.PetIntervalMultiple),
 		},
 		{
-			name: "custom watchdog timeout with default multiple",
+			name: "custom watchdog timeout",
 			spec: StorageBasedRemediationConfigSpec{
-				WatchdogTimeout: &metav1.Duration{Duration: 120 * time.Second},
+				WatchdogTimeout: &metav1.Duration{Duration: longWatchdogTimeout * time.Second},
 			},
-			expected: 120 * time.Second / time.Duration(DefaultPetIntervalMultiple), // 120s / 4 = 30s
+			expected: longWatchdogTimeout * time.Second / time.Duration(agent.PetIntervalMultiple),
 		},
 		{
-			name: "default watchdog timeout with custom multiple",
+			name: "short watchdog timeout",
 			spec: StorageBasedRemediationConfigSpec{
-				PetIntervalMultiple: &[]int32{6}[0],
+				WatchdogTimeout: &metav1.Duration{Duration: shortWatchdogTimeout * time.Second},
 			},
-			expected: DefaultWatchdogTimeout / 6, // 60s / 6 = 10s
-		},
-		{
-			name: "custom values",
-			spec: StorageBasedRemediationConfigSpec{
-				WatchdogTimeout:     &metav1.Duration{Duration: 90 * time.Second},
-				PetIntervalMultiple: &[]int32{5}[0],
-			},
-			expected: 90 * time.Second / 5, // 90s / 5 = 18s
-		},
-		{
-			name: "minimum pet interval enforced",
-			spec: StorageBasedRemediationConfigSpec{
-				WatchdogTimeout:     &metav1.Duration{Duration: 10 * time.Second},
-				PetIntervalMultiple: &[]int32{20}[0],
-			},
-			expected: time.Second, // Would be 500ms but enforced to 1s minimum
+			expected: shortWatchdogTimeout * time.Second / time.Duration(agent.PetIntervalMultiple),
 		},
 	}
 
@@ -460,64 +408,6 @@ func TestStorageBasedRemediationConfigSpec_ValidateWatchdogTimeout(t *testing.T)
 	})
 }
 
-func TestStorageBasedRemediationConfigSpec_ValidatePetIntervalMultiple(t *testing.T) {
-	tests := []struct {
-		name      string
-		spec      StorageBasedRemediationConfigSpec
-		wantError bool
-	}{
-		{
-			name:      "default multiple is valid",
-			spec:      StorageBasedRemediationConfigSpec{},
-			wantError: false,
-		},
-		{
-			name: "valid custom multiple",
-			spec: StorageBasedRemediationConfigSpec{
-				PetIntervalMultiple: &[]int32{5}[0],
-			},
-			wantError: false,
-		},
-		{
-			name: "multiple too small",
-			spec: StorageBasedRemediationConfigSpec{
-				PetIntervalMultiple: &[]int32{2}[0],
-			},
-			wantError: true,
-		},
-		{
-			name: "multiple too large",
-			spec: StorageBasedRemediationConfigSpec{
-				PetIntervalMultiple: &[]int32{25}[0],
-			},
-			wantError: true,
-		},
-		{
-			name: "minimum multiple is valid",
-			spec: StorageBasedRemediationConfigSpec{
-				PetIntervalMultiple: &[]int32{MinPetIntervalMultiple}[0],
-			},
-			wantError: false,
-		},
-		{
-			name: "maximum multiple is valid",
-			spec: StorageBasedRemediationConfigSpec{
-				PetIntervalMultiple: &[]int32{MaxPetIntervalMultiple}[0],
-			},
-			wantError: false,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			err := tt.spec.ValidatePetIntervalMultiple()
-			if (err != nil) != tt.wantError {
-				t.Errorf("ValidatePetIntervalMultiple() error = %v, wantError %v", err, tt.wantError)
-			}
-		})
-	}
-}
-
 func TestStorageBasedRemediationConfigSpec_ValidatePetIntervalTiming(t *testing.T) {
 	tests := []struct {
 		name      string
@@ -530,34 +420,23 @@ func TestStorageBasedRemediationConfigSpec_ValidatePetIntervalTiming(t *testing.
 			wantError: false,
 		},
 		{
-			name: "safe configuration",
+			name: "safe watchdog timeout configuration",
 			spec: StorageBasedRemediationConfigSpec{
-				WatchdogTimeout:     &metav1.Duration{Duration: 60 * time.Second},
-				PetIntervalMultiple: &[]int32{4}[0],
+				WatchdogTimeout: &metav1.Duration{Duration: 60 * time.Second},
 			},
 			wantError: false,
 		},
 		{
-			name: "pet interval too long - exceeds 1/3 rule",
+			name: "short watchdog timeout",
 			spec: StorageBasedRemediationConfigSpec{
-				WatchdogTimeout:     &metav1.Duration{Duration: 90 * time.Second},
-				PetIntervalMultiple: &[]int32{2}[0], // Would give 45s pet interval, which is > 30s (90/3)
+				WatchdogTimeout: &metav1.Duration{Duration: 10 * time.Second},
 			},
-			wantError: true,
+			wantError: false,
 		},
 		{
-			name: "pet interval equal to watchdog timeout",
+			name: "longer watchdog timeout",
 			spec: StorageBasedRemediationConfigSpec{
-				WatchdogTimeout:     &metav1.Duration{Duration: 10 * time.Second},
-				PetIntervalMultiple: &[]int32{1}[0],
-			},
-			wantError: true,
-		},
-		{
-			name: "pet interval exactly at 1/3 limit",
-			spec: StorageBasedRemediationConfigSpec{
-				WatchdogTimeout:     &metav1.Duration{Duration: 60 * time.Second},
-				PetIntervalMultiple: &[]int32{3}[0], // Gives exactly 20s pet interval (60/3)
+				WatchdogTimeout: &metav1.Duration{Duration: 120 * time.Second},
 			},
 			wantError: false,
 		},
@@ -882,9 +761,8 @@ func TestStorageBasedRemediationConfigSpec_ValidateAll(t *testing.T) {
 		{
 			name: "all valid custom values",
 			spec: StorageBasedRemediationConfigSpec{
-				StaleNodeTimeout:    &metav1.Duration{Duration: 2 * time.Hour},
-				WatchdogTimeout:     &metav1.Duration{Duration: 90 * time.Second},
-				PetIntervalMultiple: &[]int32{5}[0],
+				StaleNodeTimeout: &metav1.Duration{Duration: 2 * time.Hour},
+				WatchdogTimeout:  &metav1.Duration{Duration: 90 * time.Second},
 			},
 			wantError: false,
 		},
@@ -900,21 +778,6 @@ func TestStorageBasedRemediationConfigSpec_ValidateAll(t *testing.T) {
 			name: "invalid watchdog timeout",
 			spec: StorageBasedRemediationConfigSpec{
 				WatchdogTimeout: &metav1.Duration{Duration: 5 * time.Second}, // Too small
-			},
-			wantError: true,
-		},
-		{
-			name: "invalid pet interval multiple",
-			spec: StorageBasedRemediationConfigSpec{
-				PetIntervalMultiple: &[]int32{2}[0], // Too small
-			},
-			wantError: true,
-		},
-		{
-			name: "invalid pet interval timing",
-			spec: StorageBasedRemediationConfigSpec{
-				WatchdogTimeout:     &metav1.Duration{Duration: 60 * time.Second},
-				PetIntervalMultiple: &[]int32{2}[0], // Would give 30s pet interval, which is > 20s (60/3)
 			},
 			wantError: true,
 		},
@@ -965,18 +828,6 @@ func TestWatchdogConstants(t *testing.T) {
 		t.Errorf("MaxWatchdogTimeout = %v, expected 300s", MaxWatchdogTimeout)
 	}
 
-	if DefaultPetIntervalMultiple != 4 {
-		t.Errorf("DefaultPetIntervalMultiple = %v, expected 4", DefaultPetIntervalMultiple)
-	}
-
-	if MinPetIntervalMultiple != 3 {
-		t.Errorf("MinPetIntervalMultiple = %v, expected 3", MinPetIntervalMultiple)
-	}
-
-	if MaxPetIntervalMultiple != 20 {
-		t.Errorf("MaxPetIntervalMultiple = %v, expected 20", MaxPetIntervalMultiple)
-	}
-
 	// Verify logical relationships
 	if MinWatchdogTimeout >= DefaultWatchdogTimeout {
 		t.Errorf("MinWatchdogTimeout (%v) should be less than DefaultWatchdogTimeout (%v)",
@@ -988,14 +839,10 @@ func TestWatchdogConstants(t *testing.T) {
 			DefaultWatchdogTimeout, MaxWatchdogTimeout)
 	}
 
-	if MinPetIntervalMultiple >= DefaultPetIntervalMultiple {
-		t.Errorf("MinPetIntervalMultiple (%v) should be less than DefaultPetIntervalMultiple (%v)",
-			MinPetIntervalMultiple, DefaultPetIntervalMultiple)
-	}
-
-	if DefaultPetIntervalMultiple >= MaxPetIntervalMultiple {
-		t.Errorf("DefaultPetIntervalMultiple (%v) should be less than MaxPetIntervalMultiple (%v)",
-			DefaultPetIntervalMultiple, MaxPetIntervalMultiple)
+	// Verify PetIntervalMultiple constant in agent package is defined
+	// (specific value is an implementation detail)
+	if agent.PetIntervalMultiple < 1 || agent.PetIntervalMultiple > 100 {
+		t.Errorf("agent.PetIntervalMultiple = %v is out of reasonable range", agent.PetIntervalMultiple)
 	}
 }
 

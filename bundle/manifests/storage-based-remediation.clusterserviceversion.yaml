@@ -40,7 +40,6 @@ metadata:
               "node-role.kubernetes.io/worker": ""
             },
             "peerCheckInterval": "4s",
-            "petIntervalMultiple": 4,
             "rebootMethod": "systemctl-reboot",
             "sbrTimeoutSeconds": 45,
             "sbrUpdateInterval": "3s",

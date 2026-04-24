@@ -104,17 +104,6 @@ spec:
                   The value must be between 1 second and 60 seconds.
                 pattern: ^([0-9]+(\.[0-9]+)?(s|m))+$
                 type: string
-              petIntervalMultiple:
-                default: 4
-                description: |-
-                  PetIntervalMultiple defines the multiple used to calculate the pet interval from the watchdog timeout.
-                  Pet interval = watchdog timeout / pet interval multiple.
-                  This ensures the pet interval is always shorter than the watchdog timeout with a safety margin.
-                  The value must be between 3.0 and 20.0, with 4.0 providing a good balance of safety and efficiency.
-                format: int32
-                maximum: 20
-                minimum: 3
-                type: integer
               rebootMethod:
                 default: panic
                 description: |-

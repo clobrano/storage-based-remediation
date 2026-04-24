@@ -131,11 +131,6 @@ func (in *StorageBasedRemediationConfigSpec) DeepCopyInto(out *StorageBasedRemed
 		*out = new(v1.Duration)
 		**out = **in
 	}
-	if in.PetIntervalMultiple != nil {
-		in, out := &in.PetIntervalMultiple, &out.PetIntervalMultiple
-		*out = new(int32)
-		**out = **in
-	}
 	if in.IOTimeout != nil {
 		in, out := &in.IOTimeout, &out.IOTimeout
 		*out = new(v1.Duration)
