@@ -358,6 +358,11 @@ func (psc *PodStatusChecker) WaitForPodsReady(minCount int, timeout time.Duratio
 		unreadyPodsCount := 0
 		var unreadyPods []corev1.Pod
 		for _, pod := range pods.Items {
+			// Skip pods created by Jobs (they have the job-name label)
+			if _, hasJobName := pod.Labels["job-name"]; hasJobName {
+				continue
+			}
+
 			if pod.Status.Phase == corev1.PodRunning {
 				readyPodAdded := false
 				for _, condition := range pod.Status.Conditions {
