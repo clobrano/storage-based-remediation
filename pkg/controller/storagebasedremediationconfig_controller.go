@@ -89,6 +89,9 @@ const (
 	MaxStorageBasedRemediationConfigRetryDelay = 10 * time.Second
 	// StorageBasedRemediationConfigRetryBackoffFactor is the exponential backoff factor for StorageBasedRemediationConfig operation retries
 	StorageBasedRemediationConfigRetryBackoffFactor = 2.0
+
+	// I/O timeout is hardcoded to 2 seconds (valid range was 100ms-5min)
+	ioTimeout = 2 * time.Second
 )
 
 // StorageBasedRemediationConfigReconciler reconciles a StorageBasedRemediationConfig object
@@ -1556,7 +1559,7 @@ func (r *StorageBasedRemediationConfigReconciler) buildDaemonSet(sbrConfig *medi
 // buildSBRAgentArgs builds the command line arguments for the sbr-agent container
 func (r *StorageBasedRemediationConfigReconciler) buildSBRAgentArgs(sbrConfig *medik8sv1alpha1.StorageBasedRemediationConfig) []string {
 	// Note: watchdog timeout is now discovered at runtime via ioctl, not passed via CLI
-	ioTimeout := sbrConfig.Spec.GetIOTimeout()
+
 	rebootMethod := sbrConfig.Spec.GetRebootMethod()
 	sbrTimeoutSeconds := sbrConfig.Spec.GetSBRTimeoutSeconds()
 	sbrUpdateInterval := sbrConfig.Spec.GetSBRUpdateInterval()

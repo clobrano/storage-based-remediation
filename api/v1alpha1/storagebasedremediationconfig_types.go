@@ -44,12 +44,6 @@ const (
 	MaxStaleNodeTimeout = 24 * time.Hour
 	// DefaultWatchdogPath is the default path to the watchdog device
 	DefaultWatchdogPath = "/dev/watchdog"
-	// DefaultIOTimeout is the default timeout for I/O operations
-	DefaultIOTimeout = 2 * time.Second
-	// MinIOTimeout is the minimum allowed I/O timeout
-	MinIOTimeout = 100 * time.Millisecond
-	// MaxIOTimeout is the maximum allowed I/O timeout
-	MaxIOTimeout = 5 * time.Minute
 	// DefaultRebootMethod is the default reboot method for self-fencing
 	DefaultRebootMethod = "systemctl-reboot"
 	// DefaultSBRTimeoutSeconds is the default SBR timeout in seconds
@@ -139,15 +133,6 @@ type StorageBasedRemediationConfigSpec struct {
 	// +optional
 	LogLevel string `json:"logLevel,omitempty"`
 
-	// IOTimeout defines the timeout for SBR I/O operations.
-	// This determines how long the system will wait for SBR I/O operations to complete.
-	// The value must be between 100 milliseconds and 5 minutes.
-	// +kubebuilder:validation:Type=string
-	// +kubebuilder:validation:Pattern="^([0-9]+(\\.[0-9]+)?(ms|s|m|h))+$"
-	// +kubebuilder:default="2s"
-	// +optional
-	IOTimeout *metav1.Duration `json:"iotimeout,omitempty"`
-
 	// RebootMethod defines the method to use for self-fencing when a node needs to be rebooted.
 	// Valid values are "panic" (immediate kernel panic), "systemctl-reboot" (graceful systemctl reboot),
 	// and "none" (disable self-fencing, rely only on watchdog hardware timeout).
@@ -227,14 +212,6 @@ func (s *StorageBasedRemediationConfigSpec) GetLogLevel() string {
 		return s.LogLevel
 	}
 	return "warn"
-}
-
-// GetIOTimeout returns the SBR I/O timeout with default fallback
-func (s *StorageBasedRemediationConfigSpec) GetIOTimeout() time.Duration {
-	if s.IOTimeout != nil {
-		return s.IOTimeout.Duration
-	}
-	return DefaultIOTimeout
 }
 
 // GetRebootMethod returns the reboot method with default fallback
@@ -336,21 +313,6 @@ func (s *StorageBasedRemediationConfigSpec) ValidateStaleNodeTimeout() error {
 	return nil
 }
 
-// ValidateIOTimeout validates the SBR I/O timeout value
-func (s *StorageBasedRemediationConfigSpec) ValidateIOTimeout() error {
-	timeout := s.GetIOTimeout()
-
-	if timeout < MinIOTimeout {
-		return fmt.Errorf("I/O timeout %v is less than minimum %v", timeout, MinIOTimeout)
-	}
-
-	if timeout > MaxIOTimeout {
-		return fmt.Errorf("I/O timeout %v is greater than maximum %v", timeout, MaxIOTimeout)
-	}
-
-	return nil
-}
-
 // ValidateSharedStorageClass validates the shared storage class configuration
 func (s *StorageBasedRemediationConfigSpec) ValidateSharedStorageClass() error {
 	storageClassName := s.SharedStorageClass
@@ -445,10 +407,6 @@ func (s *StorageBasedRemediationConfigSpec) ValidatePeerCheckInterval() error {
 func (s *StorageBasedRemediationConfigSpec) ValidateAll() error {
 	if err := s.ValidateStaleNodeTimeout(); err != nil {
 		return fmt.Errorf("stale node timeout validation failed: %w", err)
-	}
-
-	if err := s.ValidateIOTimeout(); err != nil {
-		return fmt.Errorf("I/O timeout validation failed: %w", err)
 	}
 
 	if err := s.ValidateSharedStorageClass(); err != nil {

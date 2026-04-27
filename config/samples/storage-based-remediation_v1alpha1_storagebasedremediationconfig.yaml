@@ -27,7 +27,6 @@ spec:
 
   # Timing configuration
   staleNodeTimeout: "2h"
-  iotimeout: "5s"
   rebootMethod: "systemctl-reboot"
   sbrTimeoutSeconds: 45
   sbrUpdateInterval: "3s"
