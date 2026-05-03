@@ -29,10 +29,12 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
+	"github.com/medik8s/storage-based-remediation/pkg/agent"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -500,7 +502,7 @@ func TestSBRAgent_PeerMonitorLoop_Integration(t *testing.T) {
 
 	// Wait for peers to become unhealthy (1 second timeout + check interval)
 	heartbeatInterval := time.Duration(agent.peerMonitor.sbrTimeoutSeconds) / 2 * time.Second
-	timeout := heartbeatInterval * MaxConsecutiveFailures
+	timeout := heartbeatInterval * time.Duration(MaxConsecutiveFailures)
 	time.Sleep(timeout + time.Second)
 
 	// Should now have 0 healthy peers
@@ -1501,105 +1503,153 @@ var _ = Describe("Fence flow with real SBR agent", func() {
 	}
 
 	Context("when agent sets SBRStorageUnhealthy and controller reconciles", func() {
-		It("should write fence message to device", func() {
-			tmpDir, sbrPath, fencePath, worker1ID, worker2ID := setupFenceFlowBase()
+		// DescribeTable leaves room to add Entry rows for other MaxConsecutiveFailures values later.
+		DescribeTable("should write fence message to device",
+			func(maxFailures int) {
 
-			// Stale age for this test: (MaxConsecutiveFailures+1)*heartbeatInterval; heartbeatInterval is 1s
-			oldStale := sbrUnhealthyConditionStaleAge
-			sbrUnhealthyConditionStaleAge = time.Duration(MaxConsecutiveFailures+1) * time.Second
-			DeferCleanup(func() { sbrUnhealthyConditionStaleAge = oldStale })
+				oldMax := MaxConsecutiveFailures
+				MaxConsecutiveFailures = maxFailures
+				DeferCleanup(func() {
+					MaxConsecutiveFailures = oldMax
+				})
 
-			By("Writing initial heartbeats for worker-1 and worker-2 on mock devices")
-			mockHeartbeatDevice := mocks.NewMockBlockDevice("/tmp/fence-test-heartbeat", 1024*1024)
-			mockFenceDevice := mocks.NewMockBlockDevice("/tmp/fence-test-fence", 1024*1024)
-			ts := uint64(time.Now().UnixNano())
-			for round := 0; round < 3; round++ {
-				Expect(mockHeartbeatDevice.WritePeerHeartbeat(worker1ID, ts+uint64(round), uint64(round+1))).To(Succeed())
-				Expect(mockHeartbeatDevice.WritePeerHeartbeat(worker2ID, ts+uint64(round), uint64(round+1))).To(Succeed())
-			}
+				// Match agent peer math: heartbeat = sbrTimeoutSeconds/2 (see peerMonitor.checkPeerLiveness).
+				heartbeat := time.Duration(fenceFlowSBRTimeout/2) * time.Second
+				peerCheckInterval := 1 * time.Second // must match NewSBRAgentWithWatchdog peer check arg below
 
-			By("Creating real SBR agent and starting RunUntilShutdown")
-			mockWatchdog := mocks.NewMockWatchdog(filepath.Join(tmpDir, "watchdog"))
-			agent, err := NewSBRAgentWithWatchdog(mockWatchdog, sbrPath, "worker-1", "test-cluster", worker1ID,
-				1*time.Second, 1*time.Second, 1*time.Second, 1*time.Second, fenceFlowSBRTimeout, "panic", fenceFlowMetricsPort,
-				10*time.Minute, true, 2*time.Second,
-				k8sClient, cfg, createManagerPrefix(), false)
-			Expect(err).NotTo(HaveOccurred())
-			agent.setSBRDevices(mockHeartbeatDevice, mockFenceDevice)
-			startFenceFlowAgent(agent)
+				tmpDir, sbrPath, fencePath, worker1ID, worker2ID := setupFenceFlowBase()
 
-			By("Letting agent run a few peer loops so it sees both workers")
-			Consistently(func(g Gomega) bool {
-				node := &corev1.Node{}
-				g.Expect(k8sClient.Get(ctx, types.NamespacedName{Name: fenceFlowTargetNode}, node)).To(Succeed())
-				return isConditionExist(node.Status.Conditions, medik8sv1alpha1.NodeConditionSBRStorageUnhealthy, corev1.ConditionTrue)
-			}, 3*time.Second, 500*time.Millisecond).Should(BeFalse(), "agent should not set SBRStorageUnhealthy on worker-2")
+				// Stale age for this test: (maxFailures+1)*heartbeat (aligns with main startup formula scale).
+				staleAgeForTest := heartbeat * time.Duration(maxFailures+1)
+				oldStale := sbrUnhealthyConditionStaleAge
+				sbrUnhealthyConditionStaleAge = staleAgeForTest
+				DeferCleanup(func() { sbrUnhealthyConditionStaleAge = oldStale })
 
-			By("Simulating worker-2 agent stopping (zero out its slot)")
-			slotOffset := int64(worker2ID) * sbdprotocol.SBD_SLOT_SIZE
-			_, err = mockHeartbeatDevice.WriteAt(make([]byte, sbdprotocol.SBD_SLOT_SIZE), slotOffset)
-			Expect(err).NotTo(HaveOccurred())
+				waitUnknownMax := staleAgeForTest + 5*peerCheckInterval + 10*time.Second
 
-			By("Waiting for real agent to set SBRStorageUnhealthy on worker-2 (peer timeout ~7s)")
-			Eventually(func(g Gomega) bool {
-				node := &corev1.Node{}
-				g.Expect(k8sClient.Get(ctx, types.NamespacedName{Name: fenceFlowTargetNode}, node)).To(Succeed())
-				return isConditionExist(node.Status.Conditions, medik8sv1alpha1.NodeConditionSBRStorageUnhealthy, corev1.ConditionTrue)
-			}, 20*time.Second, 500*time.Millisecond).Should(BeTrue(), "agent should set SBRStorageUnhealthy on worker-2")
-
-			By("Simulating NHC creating StorageBasedRemediation after observing the condition")
-			sbr := &medik8sv1alpha1.StorageBasedRemediation{
-				ObjectMeta: metav1.ObjectMeta{Name: fenceFlowTargetNode, Namespace: "default"},
-				Spec: medik8sv1alpha1.StorageBasedRemediationSpec{
-					Reason:         medik8sv1alpha1.SBRRemediationReasonHeartbeatTimeout,
-					TimeoutSeconds: 300,
-				},
-			}
-			Expect(k8sClient.Create(ctx, sbr)).To(Succeed())
-
-			By("Verifying controller wrote fence message (controller uses temp devices, so read from fencePath)")
-			fenceFile, err := os.Open(fencePath)
-			Expect(err).NotTo(HaveOccurred())
-			DeferCleanup(func() { _ = fenceFile.Close() })
-
-			Eventually(func() bool {
-				for slotID := uint16(1); slotID <= sbdprotocol.SBD_MAX_NODES; slotID++ {
-					slotData := make([]byte, sbdprotocol.SBD_SLOT_SIZE)
-					n, err := fenceFile.ReadAt(slotData, int64(slotID)*sbdprotocol.SBD_SLOT_SIZE)
-					if err != nil || n < sbdprotocol.SBD_HEADER_SIZE+3 {
-						continue
-					}
-					fenceMsg, err := sbdprotocol.UnmarshalFence(slotData[:n])
-					if err != nil {
-						continue
-					}
-					if fenceMsg.Reason == sbdprotocol.FENCE_REASON_HEARTBEAT_TIMEOUT {
-						return true
-					}
+				By("Writing initial heartbeats for worker-1 and worker-2 on mock devices")
+				mockHeartbeatDevice := mocks.NewMockBlockDevice("/tmp/fence-test-heartbeat", 1024*1024)
+				mockFenceDevice := mocks.NewMockBlockDevice("/tmp/fence-test-fence", 1024*1024)
+				ts := uint64(time.Now().UnixNano())
+				for round := 0; round < 3; round++ {
+					Expect(mockHeartbeatDevice.WritePeerHeartbeat(worker1ID, ts+uint64(round), uint64(round+1))).To(Succeed())
+					Expect(mockHeartbeatDevice.WritePeerHeartbeat(worker2ID, ts+uint64(round), uint64(round+1))).To(Succeed())
 				}
-				return false
-			}, 15*time.Second, 500*time.Millisecond).Should(BeTrue(), "controller should write fence message with FENCE_REASON_HEARTBEAT_TIMEOUT")
 
-			By("Waiting for SBRStorageUnhealthy condition to become Unknown (stale age elapsed)")
-			Eventually(func(g Gomega) bool {
-				node := &corev1.Node{}
-				g.Expect(k8sClient.Get(ctx, types.NamespacedName{Name: fenceFlowTargetNode}, node)).To(Succeed())
-				return isConditionExist(node.Status.Conditions, medik8sv1alpha1.NodeConditionSBRStorageUnhealthy, corev1.ConditionUnknown)
-			}, 15*time.Second, 500*time.Millisecond).Should(BeTrue(), "agent should set SBRStorageUnhealthy to Unknown after stale age")
+				By("Creating real SBR agent and starting RunUntilShutdown")
+				mockWatchdog := mocks.NewMockWatchdog(filepath.Join(tmpDir, "watchdog"))
+				agent, err := NewSBRAgentWithWatchdog(mockWatchdog, sbrPath, "worker-1", "test-cluster", worker1ID,
+					1*time.Second, 1*time.Second, 1*time.Second, 1*time.Second, fenceFlowSBRTimeout, "panic", fenceFlowMetricsPort,
+					10*time.Minute, true, 2*time.Second,
+					k8sClient, cfg, createManagerPrefix(), false)
+				Expect(err).NotTo(HaveOccurred())
+				agent.setSBRDevices(mockHeartbeatDevice, mockFenceDevice)
+				startFenceFlowAgent(agent)
 
-			By("Simulating worker-2 recovering (write heartbeats again)")
-			ts2 := uint64(time.Now().UnixNano())
-			for round := 0; round < 3; round++ {
-				Expect(mockHeartbeatDevice.WritePeerHeartbeat(worker2ID, ts2+uint64(round), uint64(round+100))).To(Succeed())
-			}
+				By("Letting agent run a few peer loops so it sees both workers")
+				Consistently(func(g Gomega) bool {
+					node := &corev1.Node{}
+					g.Expect(k8sClient.Get(ctx, types.NamespacedName{Name: fenceFlowTargetNode}, node)).To(Succeed())
+					return isConditionExist(node.Status.Conditions, medik8sv1alpha1.NodeConditionSBRStorageUnhealthy, corev1.ConditionTrue)
+				}, 3*time.Second, 500*time.Millisecond).Should(BeFalse(), "agent should not set SBRStorageUnhealthy on worker-2")
 
-			By("Waiting for SBRStorageUnhealthy condition to become False (recovered)")
-			Eventually(func(g Gomega) bool {
-				node := &corev1.Node{}
-				g.Expect(k8sClient.Get(ctx, types.NamespacedName{Name: fenceFlowTargetNode}, node)).To(Succeed())
-				return isConditionExist(node.Status.Conditions, medik8sv1alpha1.NodeConditionSBRStorageUnhealthy, corev1.ConditionFalse)
-			}, 15*time.Second, 500*time.Millisecond).Should(BeTrue(), "agent should set SBRStorageUnhealthy to False when peer recovers")
-		})
+				By("Simulating worker-2 agent stopping (zero out its slot)")
+				slotOffset := int64(worker2ID) * sbdprotocol.SBD_SLOT_SIZE
+				_, err = mockHeartbeatDevice.WriteAt(make([]byte, sbdprotocol.SBD_SLOT_SIZE), slotOffset)
+				Expect(err).NotTo(HaveOccurred())
+
+				// buffer keeps Consistently/Eventually windows off the exact (maxFailures-1)*heartbeat gate edge
+				// (discrete peer ticks + integer missed-heartbeat counts).
+				buffer := time.Second
+				// Stay False until just before peer liveness marks unhealthy (> maxFailures*heartbeat; see checkPeerLiveness).
+				notTrueMinDuration := heartbeat*time.Duration(maxFailures-1) - buffer
+				// After notTrueMinDuration, allow two heartbeat-scale steps plus buffer for API/reconcile slack
+				// ((maxFailures+1) - (maxFailures-1) = 2 heartbeat-sized terms in the difference).
+				waitConditionTrueMax := heartbeat*time.Duration(maxFailures+1) + buffer - notTrueMinDuration
+
+				By("Peer should not report SBRStorageUnhealthy=True immediately (missed-heartbeat gate)")
+				Consistently(func(g Gomega) bool {
+					node := &corev1.Node{}
+					g.Expect(k8sClient.Get(ctx, types.NamespacedName{Name: fenceFlowTargetNode}, node)).To(Succeed())
+					return isConditionExist(node.Status.Conditions, medik8sv1alpha1.NodeConditionSBRStorageUnhealthy, corev1.ConditionTrue)
+				}, notTrueMinDuration, 500*time.Millisecond).Should(BeFalse(),
+					"condition True should not appear before enough heartbeats have been missed")
+
+				By(fmt.Sprintf("Waiting for SBRStorageUnhealthy=True (max=%d, sbrTimeoutSec=%d, hb=%v, cap=%v)",
+					maxFailures, fenceFlowSBRTimeout, heartbeat, waitConditionTrueMax))
+				Eventually(func(g Gomega) bool {
+					node := &corev1.Node{}
+					g.Expect(k8sClient.Get(ctx, types.NamespacedName{Name: fenceFlowTargetNode}, node)).To(Succeed())
+					return isConditionExist(node.Status.Conditions, medik8sv1alpha1.NodeConditionSBRStorageUnhealthy, corev1.ConditionTrue)
+				}, waitConditionTrueMax, 500*time.Millisecond).Should(BeTrue(), "agent should set SBRStorageUnhealthy on worker-2")
+
+				By("Simulating NHC creating StorageBasedRemediation after observing the condition")
+				sbr := &medik8sv1alpha1.StorageBasedRemediation{
+					ObjectMeta: metav1.ObjectMeta{Name: fenceFlowTargetNode, Namespace: "default"},
+					Spec: medik8sv1alpha1.StorageBasedRemediationSpec{
+						Reason:         medik8sv1alpha1.SBRRemediationReasonHeartbeatTimeout,
+						TimeoutSeconds: 300,
+					},
+				}
+				Expect(k8sClient.Create(ctx, sbr)).To(Succeed())
+				DeferCleanup(func() {
+					_ = client.IgnoreNotFound(k8sClient.Delete(ctx, sbr))
+				})
+
+				By("Verifying controller wrote fence message (controller uses temp devices, so read from fencePath)")
+				fenceFile, err := os.Open(fencePath)
+				Expect(err).NotTo(HaveOccurred())
+				DeferCleanup(func() { _ = fenceFile.Close() })
+
+				Eventually(func() bool {
+					for slotID := uint16(1); slotID <= sbdprotocol.SBD_MAX_NODES; slotID++ {
+						slotData := make([]byte, sbdprotocol.SBD_SLOT_SIZE)
+						n, err := fenceFile.ReadAt(slotData, int64(slotID)*sbdprotocol.SBD_SLOT_SIZE)
+						if err != nil || n < sbdprotocol.SBD_HEADER_SIZE+3 {
+							continue
+						}
+						fenceMsg, err := sbdprotocol.UnmarshalFence(slotData[:n])
+						if err != nil {
+							continue
+						}
+						if fenceMsg.Reason == sbdprotocol.FENCE_REASON_HEARTBEAT_TIMEOUT {
+							return true
+						}
+					}
+					return false
+				}, 15*time.Second, 500*time.Millisecond).Should(BeTrue(), "controller should write fence message with FENCE_REASON_HEARTBEAT_TIMEOUT")
+
+				By(fmt.Sprintf("Waiting for SBRStorageUnhealthy=Unknown after stale age (stale=%v, cap=%v)", staleAgeForTest, waitUnknownMax))
+				Eventually(func(g Gomega) bool {
+					node := &corev1.Node{}
+					g.Expect(k8sClient.Get(ctx, types.NamespacedName{Name: fenceFlowTargetNode}, node)).To(Succeed())
+					return isConditionExist(node.Status.Conditions, medik8sv1alpha1.NodeConditionSBRStorageUnhealthy, corev1.ConditionUnknown)
+				}, waitUnknownMax, 500*time.Millisecond).Should(BeTrue(), "agent should set SBRStorageUnhealthy to Unknown after stale age")
+
+				By("Simulating worker-2 recovering (write heartbeats again)")
+				ts2 := uint64(time.Now().UnixNano())
+				for round := 0; round < 3; round++ {
+					Expect(mockHeartbeatDevice.WritePeerHeartbeat(worker2ID, ts2+uint64(round), uint64(round+100))).To(Succeed())
+				}
+
+				By("Waiting for SBRStorageUnhealthy condition to become False (recovered)")
+				Eventually(func(g Gomega) bool {
+					node := &corev1.Node{}
+					g.Expect(k8sClient.Get(ctx, types.NamespacedName{Name: fenceFlowTargetNode}, node)).To(Succeed())
+					return isConditionExist(node.Status.Conditions, medik8sv1alpha1.NodeConditionSBRStorageUnhealthy, corev1.ConditionFalse)
+				}, 15*time.Second, 500*time.Millisecond).Should(BeTrue(), "agent should set SBRStorageUnhealthy to False when peer recovers")
+
+				By("Deleting StorageBasedRemediation and waiting for removal so the next DescribeTable row can Create the same name")
+				Expect(k8sClient.Delete(ctx, sbr)).To(Succeed())
+				Eventually(func(g Gomega) {
+					err := k8sClient.Get(ctx, types.NamespacedName{Name: fenceFlowTargetNode, Namespace: "default"},
+						&medik8sv1alpha1.StorageBasedRemediation{})
+					g.Expect(apierrors.IsNotFound(err)).To(BeTrue(), "remediation CR should be gone before the next table entry")
+				}, 30*time.Second, 500*time.Millisecond).Should(Succeed())
+			},
+			Entry("minimum max consecutive failures", 3),
+			Entry("default max consecutive failures (package default)", agent.DefaultMaxConsecutiveFailures),
+		)
 	})
 
 	Context("detect-only mode", func() {
