@@ -110,8 +110,6 @@ metadata:
   name: sbr-config-with-shared-storage
   namespace: sbr-system
 spec:
-  # SBR agent image configuration
-  image: "quay.io/medik8s/storage-based-remediation-agent:latest"
   # Watchdog configuration
   watchdogPath: "/dev/watchdog"
 
@@ -313,8 +311,6 @@ metadata:
 spec:
   # Standard SBR configuration
   watchdogPath: "/dev/watchdog"
-  watchdogTimeout: "60s"
-  petIntervalMultiple: 4
   # Shared storage configuration
   sharedStoragePVC: "sbr-shared-pvc"           # Name of RWX PVC
   
