@@ -82,6 +82,8 @@ const (
 	MinPeerCheckInterval = 1 * time.Second
 	// MaxPeerCheckInterval is the maximum allowed peer check interval
 	MaxPeerCheckInterval = 60 * time.Second
+	// DefaultMaxConsecutiveFailures is the runtime default when maxConsecutiveFailures is unset on the CR (no OpenAPI default).
+	DefaultMaxConsecutiveFailures = 7
 	// RelatedImageSbrAgent when this env is set it contains the image of SBR agent
 	RelatedImageSbrAgent = "RELATED_IMAGE_SBR_AGENT"
 )
@@ -214,6 +216,18 @@ type StorageBasedRemediationConfigSpec struct {
 	// +optional
 	SBRTimeoutSeconds *int32 `json:"sbrTimeoutSeconds,omitempty"`
 
+	// MaxConsecutiveFailures is the maximum number of consecutive failures (SBR device, watchdog, or local
+	// heartbeat writes) before the agent treats the node as failed and performs self-fencing (when not in
+	// detect-only or otherwise disarmed). The same threshold scales how many peer heartbeat gaps are
+	// required before a peer is considered unhealthy.
+	// Increasing MaxConsecutiveFailures will increase time-to-detection proportionally to (maxConsecutiveFailures × heartbeatInterval) for both local and peer failures.
+	// If omitted, DefaultMaxConsecutiveFailures is used
+	// at runtime.
+	// +kubebuilder:validation:Minimum=2
+	// +kubebuilder:validation:Maximum=32
+	// +optional
+	MaxConsecutiveFailures *int32 `json:"maxConsecutiveFailures,omitempty"`
+
 	// SBRUpdateInterval defines the interval for updating the SBR device with node status information.
 	// This determines how frequently each node writes its status to the shared SBR device.
 	// More frequent updates provide faster failure detection but increase I/O load on the shared storage.
@@ -343,6 +357,14 @@ func (s *StorageBasedRemediationConfigSpec) GetSBRTimeoutSeconds() int32 {
 		return *s.SBRTimeoutSeconds
 	}
 	return DefaultSBRTimeoutSeconds
+}
+
+// GetMaxConsecutiveFailures returns max consecutive failures when unset uses DefaultMaxConsecutiveFailures.
+func (s *StorageBasedRemediationConfigSpec) GetMaxConsecutiveFailures() int32 {
+	if s.MaxConsecutiveFailures != nil {
+		return *s.MaxConsecutiveFailures
+	}
+	return int32(DefaultMaxConsecutiveFailures)
 }
 
 // GetSBRUpdateInterval returns the SBR update interval with default fallback
