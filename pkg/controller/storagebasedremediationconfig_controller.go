@@ -89,19 +89,6 @@ const (
 	MaxStorageBasedRemediationConfigRetryDelay = 10 * time.Second
 	// StorageBasedRemediationConfigRetryBackoffFactor is the exponential backoff factor for StorageBasedRemediationConfig operation retries
 	StorageBasedRemediationConfigRetryBackoffFactor = 2.0
-
-	staleNodeTimeout = 1 * time.Hour
-	// I/O timeout is hardcoded to 2 seconds (valid range was 100ms-5min)
-	ioTimeout = 2 * time.Second
-	// SBR timeout is hardcoded to 30s (valid range was 10-300s)
-	sbrTimeoutSeconds = 30
-	// Update and peer check intervals are set to 5s, which is 1/6 of sbrTimeoutSeconds for safety margin
-	sbrUpdateInterval = 5 * time.Second
-	peerCheckInterval = 5 * time.Second
-	// Log level is hardcoded to debug
-	logLevel = "debug"
-	// Reboot method is hardcoded to systemctl-reboot
-	rebootMethod = "systemctl-reboot"
 )
 
 // StorageBasedRemediationConfigReconciler reconciles a StorageBasedRemediationConfig object
@@ -1569,15 +1556,15 @@ func (r *StorageBasedRemediationConfigReconciler) buildSBRAgentArgs(sbrConfig *m
 	maxConsecutiveFailures := sbrConfig.Spec.GetMaxConsecutiveFailures()
 	args := []string{
 		fmt.Sprintf("--%s=%s", agent.FlagWatchdogPath, sbrConfig.Spec.GetWatchdogPath()),
-		fmt.Sprintf("--%s=%s", agent.FlagLogLevel, logLevel),
+		fmt.Sprintf("--%s=%s", agent.FlagLogLevel, agent.LogLevel),
 		fmt.Sprintf("--%s=%s", agent.FlagClusterName, sbrConfig.Name),
-		fmt.Sprintf("--%s=%s", agent.FlagStaleNodeTimeout, staleNodeTimeout.String()),
-		fmt.Sprintf("--io-timeout=%s", ioTimeout.String()),
-		fmt.Sprintf("--%s=%s", agent.FlagRebootMethod, rebootMethod),
-		fmt.Sprintf("--%s=%d", agent.FlagSBRTimeoutSeconds, sbrTimeoutSeconds),
+		fmt.Sprintf("--%s=%s", agent.FlagStaleNodeTimeout, agent.StaleNodeTimeout),
+		fmt.Sprintf("--io-timeout=%s", agent.IoTimeout),
+		fmt.Sprintf("--%s=%s", agent.FlagRebootMethod, agent.RebootMethod),
+		fmt.Sprintf("--%s=%d", agent.FlagSBRTimeoutSeconds, agent.SbrTimeoutSeconds),
 		fmt.Sprintf("--%s=%d", agent.FlagMaxConsecutiveFailures, maxConsecutiveFailures),
-		fmt.Sprintf("--%s=%s", agent.FlagSBRUpdateInterval, sbrUpdateInterval.String()),
-		fmt.Sprintf("--%s=%s", agent.FlagPeerCheckInterval, peerCheckInterval.String()),
+		fmt.Sprintf("--%s=%s", agent.FlagSBRUpdateInterval, agent.SbrUpdateInterval),
+		fmt.Sprintf("--%s=%s", agent.FlagPeerCheckInterval, agent.PeerCheckInterval),
 	}
 
 	// Add shared storage arguments if configured
