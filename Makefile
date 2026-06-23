@@ -140,7 +140,7 @@ test-no-verify: generate manifests fmt vet envtest ## Generate and format code, 
 test: test-no-verify ## Generate and format code, run tests and verify there are no un-committed changes
 	$(MAKE) bundle-reset verify
 
-# Use := for immediate expansion to avoid TEST_ID changing between evaluations
+# Use := for immediate expansion to avoid TEST_ID changing at each evaluation
 # This prevents race conditions where mkdir creates one directory but ginkgo uses another
 TEST_ID:=$(shell date +'%s')
 TEST_HOME=.tests
