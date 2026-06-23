@@ -140,14 +140,18 @@ test-no-verify: generate manifests fmt vet envtest ## Generate and format code, 
 test: test-no-verify ## Generate and format code, run tests and verify there are no un-committed changes
 	$(MAKE) bundle-reset verify
 
-TEST_ID=$(shell date +'%s')
+# Use := for immediate expansion to avoid TEST_ID changing at each evaluation
+# This prevents race conditions where mkdir creates one directory but ginkgo uses another
+TEST_ID:=$(shell date +'%s')
 TEST_HOME=.tests
 E2E_TEST_DIR = $(TEST_HOME)/$(TEST_ID)
 
 .PHONY: test-e2e
 test-e2e: ginkgo ## Run e2e tests again (assumes operator already deployed).
 	@echo "Running e2e tests (operator must be already deployed)..."
-	mkdir -p $(E2E_TEST_DIR) && $(GINKGO) -v --junit-report=$(E2E_TEST_DIR)/junit_e2e.xml $(TEST_ARGS) test/e2e -- --test-id $(TEST_ID) --artifacts-dir $(E2E_TEST_DIR) | tee $(E2E_TEST_DIR)/execution.log
+	# Output goes to stdout (captured by CI). Aligns with other medik8s operators (FAR, MDR, SNR, NHC)
+	# Avoids pipefail/PIPESTATUS complexity from tee - test success depends only on ginkgo's exit code
+	mkdir -p $(E2E_TEST_DIR) && $(GINKGO) -v --junit-report=$(E2E_TEST_DIR)/junit_e2e.xml $(TEST_ARGS) test/e2e -- --test-id $(TEST_ID) --artifacts-dir $(E2E_TEST_DIR)
 
 
 .PHONY: load-images
