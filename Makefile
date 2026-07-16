@@ -133,7 +133,7 @@ verify-unchanged: bundle-reset ## Verify there are no un-committed changes
 test-all: test test-e2e ## Run all tests: unit and e2e
 
 .PHONY: test-no-verify
-test-no-verify: go-verify manifests generate fmt fix-imports vet envtest ginkgo ## Generate and format code, and run tests
+test-no-verify: go-verify manifests generate fmt fix-imports vet envtest ## Generate and format code, and run tests
 	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(LOCALBIN) -p path)" go test $$(go list ./... | grep -v -E '/e2e') -coverprofile cover.out
 
 .PHONY: test
