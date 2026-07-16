@@ -99,7 +99,7 @@ generate: controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and
 
 .PHONY: fmt
 fmt: goimports ## Run go goimports against code - goimports = go fmt + fixing imports.
-	$(GOIMPORTS) -w  ./api ./cmd ./internal ./test
+	$(GOIMPORTS) -w ./api ./cmd ./internal ./test ./tools/setup-shared-storage ./tools/validate-sbr-consistency ./tools/watchdog-demo
 
 .PHONY: vet
 vet: ## Run go vet against code.
