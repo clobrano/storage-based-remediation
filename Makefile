@@ -592,7 +592,7 @@ GINKGO_VERSION ?= v2.28.3
 # See https://github.com/slintes/sort-imports/releases for the last version
 SORT_IMPORTS_VERSION = v0.3.0
 # See https://github.com/golang/tools/releases for goimports versions
-GOIMPORTS_VERSION ?= v0.44.0
+GOIMPORTS_VERSION ?= v0.48.0
 
 # OLM tooling versions (aligned with other operators)
 OPERATOR_SDK_VERSION ?= v1.42.2
